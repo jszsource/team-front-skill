@@ -5,6 +5,8 @@
 # - If an installed skill folder differs from the one being installed (local
 #   edits or an older version), it is backed up to
 #   <target>\.team-front-backup\<skill>-<old-version> before being replaced.
+# - A differing installed agent/command file is backed up to
+#   <target>\.team-front-backup\<agents|commands>-<old-version>\<file>.
 # Keep behaviour identical to install.sh.
 param([string]$Target = ".\.claude")
 $ErrorActionPreference = "Stop"
@@ -67,8 +69,20 @@ foreach ($skill in Get-ChildItem -Directory (Join-Path $Src "skills")) {
     # LF line ending, no BOM: identical to install.sh output.
     [System.IO.File]::WriteAllText((Join-Path (Resolve-Path $skillDest).Path $Stamp), "$Version`n")
 }
-Copy-Item (Join-Path $Src "agents/*.md") (Join-Path $Target "agents")
-Copy-Item (Join-Path $Src "commands/*.md") (Join-Path $Target "commands")
+# Agents and commands: back up a differing installed file before overwriting it.
+foreach ($kind in "agents", "commands") {
+    foreach ($file in Get-ChildItem -File (Join-Path $Src "$kind/*.md")) {
+        $dest = Join-Path $Target "$kind/$($file.Name)"
+        if ((Test-Path $dest) -and ((Get-FileHash $file.FullName).Hash -ne (Get-FileHash $dest).Hash)) {
+            $backup = Join-Path $BackupRoot "$kind-$OldVersion/$($file.Name)"
+            if (Test-Path $backup) { $backup = "$backup.$(Get-Date -Format 'yyyyMMddHHmmss')" }
+            New-Item -ItemType Directory -Force -Path (Split-Path $backup) | Out-Null
+            Copy-Item $dest $backup
+            Write-Host "WARNING: $dest differs from v$Version - backed up to $backup"
+        }
+        Copy-Item $file.FullName $dest
+    }
+}
 
 Write-Host "team-front-skill: $OldVersion -> $Version"
 Write-Host "Installed team-frontend + front-template skills, front-reviewer/front-refactorer agents and /front-setup into $Target"

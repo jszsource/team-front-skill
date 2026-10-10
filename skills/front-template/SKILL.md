@@ -1,6 +1,6 @@
 ---
 name: front-template
-description: Generates ready-to-use code templates in the team frontend format (team-frontend standards) — a full new Next.js or React project skeleton (package-manager aware, with security headers/CSP, Playwright + axe smoke test and GitHub Actions CI), an FSD slice (entity / feature / widget / view) with ui/model/api/lib/index.ts and Vitest tests, or a single component with its local components/ folder. Use when the user runs /front-template, or asks to scaffold/generate/create a template, boilerplate, starter, new project, new page, new entity, new feature, new widget or new component in a Next.js or React project.
+description: Generates code in the team frontend format — a new Next.js or React project skeleton (CSP, Playwright + axe, CI), an FSD slice (entity / feature / widget / view) with ui/model/api/lib/index.ts and Vitest tests, or a component with its local components/ folder. Use when the user runs /front-template or asks to scaffold a new project, page, entity, feature, widget or component in a Next.js or React project.
 argument-hint: "react | next | project <name> [next|react] | entity|feature|widget|view <name> | component <slice-path> <Name>"
 ---
 

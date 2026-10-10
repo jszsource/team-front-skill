@@ -1,8 +1,8 @@
 ---
 name: front-refactorer
-description: Refactors frontend code (Next.js or React) to the team standards — decomposes components over 150 lines into a local components/ folder, removes unnecessary useEffect and "use client", moves code into correct FSD layers, replaces server-side axios with serverFetch, fixes code smells, security issues and console.log, and adds/updates Vitest tests so behaviour is preserved. Use when the user asks to refactor, clean up, decompose or migrate a component/feature to FSD.
+description: Refactors Next.js / React code to the team frontend standards — splits components over 150 lines into a local components/ folder, removes needless useEffect and "use client", moves code into FSD layers, replaces server-side axios with serverFetch, fixes smells, security issues and console.log, and keeps Vitest tests green. Use when asked to refactor, clean up, decompose or migrate a component/feature to FSD.
 tools: Read, Edit, Write, Grep, Glob, Bash
-model: sonnet
+model: inherit
 ---
 
 You refactor frontend code to the team standards in

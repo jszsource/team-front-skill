@@ -17,6 +17,7 @@ Cari versiya: `VERSION` faylına bax (dəyişikliklər `CHANGELOG.md`-dədir).
 | `.claude-plugin/` | Plugin manifesti (`plugin.json`) və marketplace (`marketplace.json`) |
 | `install.*` / `uninstall.*` | `.claude/` qovluğuna kopyalama ilə quraşdırma və silmə |
 | `scripts/validate.mjs` | Paketin yoxlanması (lokalda və GitHub Actions-da işləyir) |
+| `evals/` + `scripts/eval-review.mjs` | Davranış eval-ı: qəsdən səhvli fixture tətbiq + real front-reviewer nəticəsini qiymətləndirən scorer |
 
 ### References
 
@@ -155,10 +156,15 @@ Plugin kimi quraşdırılıbsa, əmrlərin əvvəlinə `team-front-skill:` əlav
 node scripts/validate.mjs     # və ya: npm run validate   (Node 20+, dependency yoxdur)
 ```
 
-Frontmatter-i, çarpaz istinadları, `SKILL.md`-dəki reference indeksini,
-versiya uyğunluğunu, installer/uninstaller paritetini və qayda mətnində
-xarici URL olmadığını yoxlayır. Eyni yoxlama installer smoke testləri ilə birlikdə
-GitHub Actions-da işləyir (`.github/workflows/validate.yml`).
+Frontmatter-i (description uzunluğu ≤ 500 daxil), çarpaz istinadları,
+`SKILL.md`-dəki reference indeksini, versiya uyğunluğunu, installer/uninstaller
+paritetini, sətir limitlərinin STANDARDS ilə uyğunluğunu, eval fixture-ı və
+qayda mətnində xarici URL olmadığını yoxlayır; STANDARDS 180 gündən çox
+nəzərdən keçirilməyibsə xəbərdarlıq verir. Eyni yoxlama installer smoke
+testləri ilə birlikdə GitHub Actions-da işləyir (`.github/workflows/validate.yml`).
+
+Reviewer-in standartı həqiqətən tətbiq etdiyini yoxlamaq üçün reviewer,
+STANDARDS və ya reference dəyişəndən sonra `evals/README.md`-dəki eval-ı işə sal.
 
 ## Standartın dəyişdirilməsi
 
@@ -168,5 +174,6 @@ GitHub Actions-da işləyir (`.github/workflows/validate.yml`).
 3. Versiyanı hər yerdə artır: `VERSION`, `.claude-plugin/plugin.json`,
    `.claude-plugin/marketplace.json`, `package.json`, `STANDARDS.md`-in status
    sətri, və `CHANGELOG.md`-ə qeyd əlavə et.
-4. `node scripts/validate.mjs` işə sal və bütün problemləri düzəlt.
+4. `node scripts/validate.mjs` işə sal və bütün problemləri düzəlt; reviewer-in
+   yoxladığı qayda dəyişibsə, eval-ı da işə sal (`evals/README.md`).
 5. Push et; komanda üzvləri plugin-i `/plugin` menyusundan update edir və ya installer-i yenidən işə salır.

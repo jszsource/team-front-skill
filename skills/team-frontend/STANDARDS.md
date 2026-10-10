@@ -1,6 +1,6 @@
 # Frontend Engineering Standards
 
-> Status: **v1.1.0** · Owner: Frontend Team · Last reviewed: 2026-10-10
+> Status: **v1.2.0** · Owner: Frontend Team · Last reviewed: 2026-10-10
 > Applies to: every Next.js and React (SPA) project owned by the team.
 > This document is the single source of truth. The `team-frontend` skill, the
 > `front-reviewer` / `front-refactorer` agents and the `/front-setup` command all

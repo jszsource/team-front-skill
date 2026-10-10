@@ -20,6 +20,9 @@ jobs:
       - name: Validate package (frontmatter, refs, index, versions, installers, URLs)
         run: node scripts/validate.mjs
 
+      - name: Eval scorer vs golden report
+        run: node scripts/eval-review.mjs evals/review-fixture/golden-report.txt
+
       - name: Shell syntax
         run: |
           for f in install.sh uninstall.sh; do sh -n "$f"; done
@@ -57,6 +60,11 @@ jobs:
           echo "$out" | grep -q WARNING
           grep -q "local edit" "$t/.team-front-backup/front-template-$version/SKILL.md"
           if grep -q "local edit" "$t/skills/front-template/SKILL.md"; then echo "edit not replaced"; exit 1; fi
+          # Local edit to an agent: backed up before overwrite.
+          echo "agent edit" >> "$t/agents/front-reviewer.md"
+          sh install.sh "$t"
+          grep -q "agent edit" "$t/.team-front-backup/agents-$version/front-reviewer.md"
+          if grep -q "agent edit" "$t/agents/front-reviewer.md"; then echo "agent edit not replaced"; exit 1; fi
           sh uninstall.sh "$t"
           test ! -e "$t/skills/team-frontend"
           test ! -e "$t/skills/front-template"
@@ -84,6 +92,11 @@ jobs:
           ./install.ps1 -Target $t
           $backup = Join-Path $t ".team-front-backup/front-template-$version/SKILL.md"
           if (-not (Select-String -Quiet 'local edit' $backup)) { throw 'backup missing local edit' }
+          Add-Content (Join-Path $t 'agents/front-reviewer.md') 'agent edit'
+          ./install.ps1 -Target $t
+          $agentBackup = Join-Path $t ".team-front-backup/agents-$version/front-reviewer.md"
+          if (-not (Select-String -Quiet 'agent edit' $agentBackup)) { throw 'agent backup missing local edit' }
+          if (Select-String -Quiet 'agent edit' (Join-Path $t 'agents/front-reviewer.md')) { throw 'agent edit not replaced' }
           ./uninstall.ps1 -Target $t
           foreach ($f in 'skills/team-frontend', 'skills/front-template', 'agents/front-reviewer.md', 'commands/front-setup.md') {
             if (Test-Path (Join-Path $t $f)) { throw "not removed: $f" }

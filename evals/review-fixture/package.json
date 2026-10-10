@@ -1,0 +1,13 @@
+{
+  "name": "review-fixture",
+  "private": true,
+  "description": "Deliberately broken Next.js app used to evaluate the front-reviewer agent. Not meant to build.",
+  "packageManager": "npm@10.9.0",
+  "dependencies": {
+    "axios": "^1.7.0",
+    "next": "^16.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.0"
+  }
+}

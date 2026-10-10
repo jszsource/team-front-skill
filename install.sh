@@ -6,6 +6,8 @@
 # - If an installed skill folder differs from the one being installed (local
 #   edits or an older version), it is backed up to
 #   <target>/.team-front-backup/<skill>-<old-version> before being replaced.
+# - A differing installed agent/command file is backed up to
+#   <target>/.team-front-backup/<agents|commands>-<old-version>/<file>.
 # Keep behaviour identical to install.ps1.
 set -e
 
@@ -47,8 +49,21 @@ for skill in "$SRC"/skills/*/; do
   cp -R "${skill%/}" "$TARGET/skills/"
   printf '%s\n' "$VERSION" > "$dest/$STAMP"
 done
-cp "$SRC"/agents/*.md "$TARGET/agents/"
-cp "$SRC"/commands/*.md "$TARGET/commands/"
+# Agents and commands: back up a differing installed file before overwriting it.
+for kind in agents commands; do
+  for file in "$SRC/$kind"/*.md; do
+    name="$(basename "$file")"
+    dest="$TARGET/$kind/$name"
+    if [ -f "$dest" ] && ! cmp -s "$file" "$dest"; then
+      backup="$BACKUP_ROOT/$kind-$OLD_VERSION/$name"
+      [ -e "$backup" ] && backup="$backup.$(date +%Y%m%d%H%M%S)"
+      mkdir -p "$(dirname "$backup")"
+      cp "$dest" "$backup"
+      echo "WARNING: $dest differs from v$VERSION - backed up to $backup"
+    fi
+    cp "$file" "$dest"
+  done
+done
 
 echo "team-front-skill: $OLD_VERSION -> $VERSION"
 echo "Installed team-frontend + front-template skills, front-reviewer/front-refactorer agents and /front-setup into $TARGET"

@@ -1,0 +1,28 @@
+{
+  "description": "Findings the front-reviewer agent must report for this fixture. A finding matches when one output line names the file, cites one of the STANDARDS sections and matches the keyword regex (case-insensitive). Scored by scripts/eval-review.mjs.",
+  "minRecall": 0.8,
+  "mustFind": [
+    { "id": "page-use-client", "file": "app/products/[id]/page.tsx", "sections": [5], "keywords": "use client" },
+    { "id": "page-useeffect-fetch", "file": "app/products/[id]/page.tsx", "sections": [4, 5, 7], "keywords": "useEffect|effect" },
+    { "id": "page-axios-client", "file": "app/products/[id]/page.tsx", "sections": [6], "keywords": "axios|http|serverFetch" },
+    { "id": "page-params-not-awaited", "file": "app/products/[id]/page.tsx", "sections": [5], "keywords": "params|await|Promise" },
+    { "id": "server-axios", "file": "src/entities/product/api/product.server.ts", "sections": [6], "keywords": "axios|serverFetch" },
+    { "id": "server-process-env", "file": "src/entities/product/api/product.server.ts", "sections": [5, 13], "keywords": "process\\.env|env" },
+    { "id": "server-only-missing", "file": "src/entities/product/api/product.server.ts", "sections": [5, 13], "keywords": "server-only" },
+    { "id": "cart-cross-slice-import", "file": "src/features/add-to-cart/ui/AddToCartButton.tsx", "sections": [2], "keywords": "wishlist|cross|same.layer|public|index|internal" },
+    { "id": "cart-boolean-props", "file": "src/features/add-to-cart/ui/AddToCartButton.tsx", "sections": [3], "keywords": "isCompact|withIcon|isAdmin|boolean|cva" },
+    { "id": "cart-zustand-no-selector", "file": "src/features/add-to-cart/ui/AddToCartButton.tsx", "sections": [7], "keywords": "selector" },
+    { "id": "cart-console-log", "file": "src/features/add-to-cart/ui/AddToCartButton.tsx", "sections": [14], "keywords": "console|logger" },
+    { "id": "cart-clickable-div", "file": "src/features/add-to-cart/ui/AddToCartButton.tsx", "sections": [8], "keywords": "div|button|onClick|clickable|keyboard" },
+    { "id": "cart-classname-concat", "file": "src/features/add-to-cart/ui/AddToCartButton.tsx", "sections": [8], "keywords": "cn\\(|concat|className" },
+    { "id": "card-nested-component", "file": "src/widgets/product-card/ui/ProductCard.tsx", "sections": [3], "keywords": "Price|inside|nested|inner" },
+    { "id": "card-dangerous-html", "file": "src/widgets/product-card/ui/ProductCard.tsx", "sections": [13], "keywords": "dangerouslySetInnerHTML|sanitize|XSS" },
+    { "id": "card-hex-colour", "file": "src/widgets/product-card/ui/ProductCard.tsx", "sections": [8], "keywords": "#ff0000|hex|arbitrary|token" },
+    { "id": "card-img", "file": "src/widgets/product-card/ui/ProductCard.tsx", "sections": [5, 8], "keywords": "<img|img|next/image|alt" },
+    { "id": "card-process-env", "file": "src/widgets/product-card/ui/ProductCard.tsx", "sections": [5, 13], "keywords": "process\\.env|env" },
+    { "id": "token-localstorage", "file": "src/shared/api/token.ts", "sections": [6, 13], "keywords": "localStorage|storage" }
+  ],
+  "mustNotFlag": [
+    { "id": "catalog-size-false-positive", "file": "src/widgets/catalog/ui/CatalogNav.tsx", "sections": [3], "keywords": "150|lines|size|max-lines|decompos", "why": "175 raw lines but ~110 non-blank, non-comment lines: under the §3.1 limit." }
+  ]
+}

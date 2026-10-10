@@ -1,5 +1,5 @@
 ---
-description: Audit and set up a Next.js or React project to the team frontend standards — package-manager detection, dependency version check (with confirmation), ESLint/Prettier/husky/lint-staged/commitlint, Vitest + MSW, Playwright E2E + axe, GitHub Actions CI, Tailwind + shadcn/ui, axios client + serverFetch (Next server), security headers/CSP, Sentry + Web Vitals, optional i18n, TanStack Query/Zustand providers, FSD folder skeleton, TanStack Router for React.
+description: Audit and set up a Next.js or React project to the team frontend standards — dependency version check, ESLint/Prettier/husky/commitlint, Vitest + MSW, Playwright + axe, GitHub Actions CI, Tailwind + shadcn/ui, axios + serverFetch, CSP/security headers, Sentry, optional i18n, providers, FSD skeleton.
 argument-hint: "[audit-only]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 ---

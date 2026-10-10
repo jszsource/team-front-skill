@@ -266,6 +266,96 @@ for (const file of [...mdIn(SKILLS), ...agentFiles, ...commandFiles]) {
 }
 
 // ---------------------------------------------------------------------------
+// g) Frontmatter descriptions stay short (they drive auto-triggering)
+// ---------------------------------------------------------------------------
+const MAX_DESCRIPTION = 500;
+for (const file of [...skillFiles.filter(existsSync), ...agentFiles, ...commandFiles]) {
+  const len = (frontmatter(read(file))?.description ?? '').length;
+  check(len <= MAX_DESCRIPTION, `[description] ${rel(file)}: description is ${len} chars, max ${MAX_DESCRIPTION} — keep it specific, details belong in the body`);
+}
+
+// ---------------------------------------------------------------------------
+// h) Numeric limits match STANDARDS (component / hook line limits)
+// ---------------------------------------------------------------------------
+{
+  const standards = read(join(SKILLS, 'team-frontend', 'STANDARDS.md'));
+  const row = standards.match(/component > (\d+) lines, hook > (\d+) lines/);
+  if (check(row, '[limits] STANDARDS.md: smells table row "component > N lines, hook > N lines" not found')) {
+    const limits = { component: Number(row[1]), hook: Number(row[2]) };
+    const patterns = [
+      ['component', /max-lines[^\n]*?max:\s*(\d+)/g],
+      // ".tsx` > 150 lines" / ".tsx` file > 150 lines" (route files have their own ~20-line rule, §2.3)
+      ['component', /\.tsx`?\s*(?:file\s*)?(?:>|≤|<=)\s*(\d+)\s*lines/g],
+      ['component', /(?:≤|<=)?\s*(\d+)\s*lines per `?\.tsx/g],
+      ['component', /\bcomponents?\s+(?:>|≤|over)\s*(\d+)/gi],
+      ['component', /(\d+)-line component/g],
+      ['hook', /\bhooks?\s*>\s*(\d+)/gi],
+    ];
+    for (const file of [...mdIn(SKILLS), ...agentFiles, ...commandFiles]) {
+      const lines = read(file).split('\n');
+      lines.forEach((line, i) => {
+        for (const [kind, re] of patterns) {
+          for (const m of line.matchAll(re)) {
+            check(
+              Number(m[1]) === limits[kind],
+              `[limits] ${rel(file)}:${i + 1}: ${kind} limit ${m[1]} ≠ ${limits[kind]} from STANDARDS.md ("${m[0].trim()}")`,
+            );
+          }
+        }
+      });
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// i) Eval fixture is consistent (files exist, sections are real)
+// ---------------------------------------------------------------------------
+{
+  const fixture = join(ROOT, 'evals', 'review-fixture');
+  const expectedPath = join(fixture, 'expected.json');
+  if (existsSync(expectedPath)) {
+    const sections = new Set(
+      [...read(join(SKILLS, 'team-frontend', 'STANDARDS.md')).matchAll(/^## (\d+)\./gm)].map((m) => Number(m[1])),
+    );
+    let expected;
+    try {
+      expected = JSON.parse(read(expectedPath));
+    } catch (e) {
+      errors.push(`[evals] evals/review-fixture/expected.json: invalid JSON (${e.message})`);
+    }
+    for (const item of [...(expected?.mustFind ?? []), ...(expected?.mustNotFlag ?? [])]) {
+      check(existsSync(join(fixture, item.file)), `[evals] ${item.id}: fixture file "${item.file}" does not exist`);
+      for (const s of item.sections ?? []) {
+        check(sections.has(s), `[evals] ${item.id}: §${s} is not a section of STANDARDS.md`);
+      }
+      try {
+        new RegExp(item.keywords, 'i');
+        passed += 1;
+      } catch {
+        errors.push(`[evals] ${item.id}: invalid keywords regex "${item.keywords}"`);
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// j) Staleness warning (does not fail): the standard pins "latest stable"
+//    framework versions, so it must be re-reviewed regularly.
+// ---------------------------------------------------------------------------
+const warnings = [];
+{
+  const MAX_AGE_DAYS = 180;
+  const reviewed = read(join(SKILLS, 'team-frontend', 'STANDARDS.md')).match(/Last reviewed:\s*(\d{4}-\d{2}-\d{2})/)?.[1];
+  if (check(reviewed, '[stale] STANDARDS.md status block has no "Last reviewed: YYYY-MM-DD"')) {
+    const age = Math.floor((Date.now() - Date.parse(reviewed)) / 86_400_000);
+    if (age > MAX_AGE_DAYS) {
+      warnings.push(`[stale] STANDARDS.md last reviewed ${reviewed} (${age} days ago) — re-check framework versions/APIs in references/ and bump the date`);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+for (const w of warnings) console.warn(`⚠ ${w}`);
 if (errors.length) {
   console.error(`✖ ${errors.length} problem(s) found (${passed} checks passed):\n`);
   for (const e of errors) console.error(`  - ${e}`);

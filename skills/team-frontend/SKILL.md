@@ -1,6 +1,6 @@
 ---
 name: team-frontend
-description: Team frontend standards for Next.js (App Router) and React (Vite + TanStack Router) projects — Feature-Sliced Design, Server Components first, components ≤150 lines with decomposition into local components/ folders, minimal useEffect, axios with token-refresh interceptor on the client and a typed serverFetch on the Next server, Zustand, TanStack Query, Tailwind + shadcn/ui, Vitest + Playwright E2E with axe a11y checks, security (CSP, XSS, cookies/CSRF, Server Actions), Sentry/Web Vitals/bundle budgets, i18n (next-intl / react-i18next), husky + ESLint + GitHub Actions CI, package-manager aware. Checks dependency versions on setup or request. Use whenever writing, scaffolding, reviewing or refactoring frontend code in a Next.js or React project, or when the user asks to set up/upgrade a frontend project.
+description: Team frontend standards for Next.js (App Router) and React (Vite + TanStack Router) — Feature-Sliced Design, Server Components first, ≤150-line components, minimal useEffect, axios client + serverFetch on the Next server, Zustand, TanStack Query, Tailwind + shadcn/ui, Vitest + Playwright, security, Sentry, i18n, husky/ESLint/CI. Use whenever writing, scaffolding, reviewing or refactoring frontend code in a Next.js or React project, or setting up/upgrading one.
 ---
 
 # Team Frontend Standards
@@ -50,7 +50,8 @@ Import only through a slice's `index.ts`. No cross-imports within one layer.
 
 Hard rules (details: `references/components.md`):
 
-- **≤150 lines per `.tsx` file** (whole file). If it would exceed, decompose.
+- **≤150 lines per `.tsx` file** (whole file, blank/comment lines excluded —
+  ESLint `max-lines`). If it would exceed, decompose.
   Put sub-components in a `components/` folder **next to the parent file**.
 - One component per file; never declare components inside components.
 - No layout/behaviour-mode boolean props (`isCompact`, `withHeader`) — use

@@ -14,11 +14,12 @@ powershell -ExecutionPolicy Bypass -File install.ps1 [-Target <dir>]
 bash uninstall.sh [target-.claude-dir]
 powershell -ExecutionPolicy Bypass -File uninstall.ps1 [-Target <dir>]
 node scripts/validate.mjs                                     # package QA (npm run validate)
+node scripts/eval-review.mjs <report.txt>                     # score a front-reviewer run (evals/README.md)
 ```
 
 As a plugin: `/plugin marketplace add <path-or-git-url>` then `/plugin install team-front-skill@team-front` (commands become `/team-front-skill:<name>`).
 
-Installers copy `skills/*/` (replacing each skill folder wholesale, after backing up a folder that differs to `<target>/.team-front-backup/<skill>-<old-version>`), write `VERSION` to `<skill>/.installed-version`, and copy `agents/*.md` and `commands/*.md`. Uninstallers remove exactly the shipped items and keep backups. Keep `install.sh`/`install.ps1` and `uninstall.sh`/`uninstall.ps1` behaviourally identical; if you add a skill, agent, command or new top-level content directory, update all four (the validator checks uninstallers name every shipped item). `.gitattributes` keeps `*.sh` LF and `*.ps1` CRLF.
+Installers copy `skills/*/` (replacing each skill folder wholesale, after backing up a folder that differs to `<target>/.team-front-backup/<skill>-<old-version>`), write `VERSION` to `<skill>/.installed-version`, and copy `agents/*.md` and `commands/*.md` (a differing installed file is first backed up to `<target>/.team-front-backup/<agents|commands>-<old-version>/`). Uninstallers remove exactly the shipped items and keep backups. Keep `install.sh`/`install.ps1` and `uninstall.sh`/`uninstall.ps1` behaviourally identical; if you add a skill, agent, command or new top-level content directory, update all four (the validator checks uninstallers name every shipped item). `.gitattributes` keeps `*.sh` LF and `*.ps1` CRLF.
 
 ## Architecture
 
@@ -30,7 +31,9 @@ Installers copy `skills/*/` (replacing each skill folder wholesale, after backin
 - `commands/front-setup.md` — `/front-setup [audit-only]` slash command.
 - `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json` — plugin manifest and single-plugin marketplace (`team-front-skill@team-front`).
 - `VERSION`, `CHANGELOG.md`, `package.json` (only for `npm run validate`).
-- `scripts/validate.mjs` — zero-dependency checks: frontmatter, cross-references, reference index, version consistency, installer parity, no external URLs in rule text. `.github/workflows/validate.yml` runs it plus installer smoke tests.
+- `scripts/validate.mjs` — zero-dependency checks: frontmatter (descriptions ≤ 500 chars), cross-references, reference index, version consistency, installer parity, component/hook line limits matching the STANDARDS smells row, eval fixture consistency, no external URLs in rule text; warns (non-failing) when STANDARDS "Last reviewed" is > 180 days old. `.github/workflows/validate.yml` runs it plus installer smoke tests and the eval scorer on `golden-report.txt`.
+- `evals/review-fixture/` — deliberately broken Next.js app + `expected.json` (findings by file, § and keyword, plus `mustNotFlag` traps) + `golden-report.txt`; `scripts/eval-review.mjs <report>` scores a real front-reviewer run (see `evals/README.md`). Not shipped by the installers. New fixture violation → update the fixture, `expected.json` and `golden-report.txt` together.
+- `LICENSE` — MIT.
 
 ### Path conventions (easy to break)
 

@@ -6,6 +6,28 @@ The version here must match `VERSION`, `.claude-plugin/*.json`, `package.json`
 and the status line of `skills/team-frontend/STANDARDS.md` (checked by
 `node scripts/validate.mjs`).
 
+## [1.2.0] - 2026-10-10
+
+### Added
+
+- `evals/review-fixture/`: deliberately broken Next.js app, `expected.json`
+  (19 required findings + a false-positive trap) and `scripts/eval-review.mjs`
+  (`npm run eval:review`) to score a real front-reviewer run. CI scores the
+  hand-written `golden-report.txt` to keep fixture and scorer consistent.
+- Validator checks: frontmatter descriptions ≤ 500 chars; component/hook line
+  limits in every file match STANDARDS; eval fixture files and § numbers exist;
+  non-failing warning when STANDARDS "Last reviewed" is older than 180 days.
+- MIT `LICENSE`; `license` field in `package.json` and `plugin.json`.
+
+### Changed
+
+- front-reviewer counts the 150-line limit like ESLint `max-lines` (blank and
+  comment lines excluded) instead of raw `wc -l`, which produced false positives.
+- Installers back up a locally modified agent/command file to
+  `.team-front-backup/<agents|commands>-<old-version>/` before overwriting it.
+- Agents use `model: inherit` instead of a hard-coded model.
+- Shorter frontmatter descriptions for both skills, both agents and `/front-setup`.
+
 ## [1.1.0] - 2026-10-10
 
 ### Added

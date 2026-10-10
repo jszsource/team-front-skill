@@ -17,6 +17,7 @@ Current version: see `VERSION` (changes in `CHANGELOG.md`).
 | `.claude-plugin/` | Plugin manifest (`plugin.json`) and marketplace (`marketplace.json`) |
 | `install.*` / `uninstall.*` | Copy-based install into a `.claude/` folder, and removal |
 | `scripts/validate.mjs` | Package QA (run locally and in GitHub Actions) |
+| `evals/` + `scripts/eval-review.mjs` | Behaviour eval: broken fixture app + scorer for a real front-reviewer run |
 
 ### References
 
@@ -156,10 +157,15 @@ With a plugin install, prefix commands with `team-front-skill:`.
 node scripts/validate.mjs     # or: npm run validate   (Node 20+, no dependencies)
 ```
 
-Checks frontmatter, cross-references, the reference index in `SKILL.md`,
-version consistency, installer/uninstaller parity and that rule text has no
-external URLs. The same check plus installer smoke tests run in GitHub Actions
+Checks frontmatter (incl. description length ≤ 500), cross-references, the
+reference index in `SKILL.md`, version consistency, installer/uninstaller
+parity, line limits matching STANDARDS, the eval fixture, and that rule text
+has no external URLs; warns when STANDARDS was last reviewed > 180 days ago.
+The same check plus installer smoke tests run in GitHub Actions
 (`.github/workflows/validate.yml`).
+
+To check that the reviewer actually applies the standard, run the eval in
+`evals/README.md` after changing the reviewer, STANDARDS or a reference.
 
 ## Changing the standard
 
@@ -169,5 +175,6 @@ external URLs. The same check plus installer smoke tests run in GitHub Actions
 3. Bump the version everywhere: `VERSION`, `.claude-plugin/plugin.json`,
    `.claude-plugin/marketplace.json`, `package.json`, the status line of
    `STANDARDS.md`, and add a `CHANGELOG.md` entry.
-4. Run `node scripts/validate.mjs` and fix every problem.
+4. Run `node scripts/validate.mjs` and fix every problem; for rule changes
+   that the reviewer checks, also run the eval (`evals/README.md`).
 5. Push; teammates update the plugin from the `/plugin` menu or re-run the installer.

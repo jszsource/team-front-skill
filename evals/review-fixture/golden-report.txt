@@ -1,0 +1,26 @@
+🔴 blocker
+src/entities/product/api/product.server.ts:1 — §6 HTTP — axios imported in server code. Fix: use serverFetch from shared/api/http.server.ts.
+src/widgets/product-card/ui/ProductCard.tsx:14 — §13 Security — dangerouslySetInnerHTML without sanitizeHtml (XSS). Fix: wrap with sanitizeHtml().
+app/products/[id]/page.tsx:1 — §5 Next.js — "use client" on page.tsx. Fix: keep page a Server Component, move interactivity to a leaf.
+
+🟠 major
+app/products/[id]/page.tsx:12 — §4 useEffect — useEffect used for data fetching. Fix: fetch in the RSC with serverFetch.
+app/products/[id]/page.tsx:13 — §6 HTTP — axios imported outside shared/api. Fix: RSC + serverFetch.
+app/products/[id]/page.tsx:9 — §5 Next.js — params is a Promise and is not awaited. Fix: `const { id } = await params`.
+src/entities/product/api/product.server.ts:6 — §5 Next.js — process.env read outside shared/config/env*.ts. Fix: use env.server.ts.
+src/entities/product/api/product.server.ts:1 — §5 Next.js — missing import 'server-only'. Fix: add it as the first import.
+src/features/add-to-cart/ui/AddToCartButton.tsx:3 — §2 FSD — imports internals of same-layer slice features/wishlist. Fix: compose in a widget.
+src/features/add-to-cart/ui/AddToCartButton.tsx:5 — §3.2 Props — behaviour booleans isCompact/withIcon/isAdmin. Fix: cva variants or composition.
+src/features/add-to-cart/ui/AddToCartButton.tsx:8 — §7 State — Zustand store used without a selector. Fix: useWishlistStore((s) => s.add).
+src/features/add-to-cart/ui/AddToCartButton.tsx:16 — §8 UI — clickable div without keyboard support. Fix: shadcn Button.
+src/widgets/product-card/ui/ProductCard.tsx:6 — §3.1 Components — Price component declared inside ProductCard. Fix: move to components/Price.tsx.
+src/widgets/product-card/ui/ProductCard.tsx:12 — §5 Next.js — <img> without alt instead of next/image. Fix: next/image with alt.
+src/widgets/product-card/ui/ProductCard.tsx:12 — §5 Next.js — process.env read in a widget. Fix: shared/config/env.ts.
+src/shared/api/token.ts:4 — §6 HTTP — access token stored in localStorage. Fix: httpOnly cookie.
+
+🟡 minor
+src/features/add-to-cart/ui/AddToCartButton.tsx:11 — §14 Observability — console.log. Fix: shared/lib/logger.
+src/features/add-to-cart/ui/AddToCartButton.tsx:16 — §8 UI — className built by string concatenation. Fix: cn().
+src/widgets/product-card/ui/ProductCard.tsx:7 — §8 UI — hex colour text-[#ff0000]. Fix: theme token.
+
+3 blockers, 13 major, 3 minor — changes required
