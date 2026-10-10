@@ -39,21 +39,61 @@ Current version: see `VERSION` (changes in `CHANGELOG.md`).
 | `dependency-updates.md` | version check and upgrades |
 | `refactoring-smells.md` | code smells and refactorings |
 
+## Quick start for teammates
+
+**Before you start:** you need Claude Code and read access to
+`jszsource/team-front-skill` on GitHub. If the repo is private, ask to be added
+to it, then make sure git can reach GitHub (SSH key or `gh auth login`).
+
+Pick **one** of these options:
+
+1. **Your frontend repo already has `.claude/settings.json` with the plugin
+   (Option B below).** Open the project in Claude Code and accept the prompt to
+   install the plugin. That's all.
+2. **Only you want it:** run the two `/plugin` commands in Option A.
+3. **Check that it works:** in a React/Next.js project, ask Claude to "create a
+   product list page", or run `/team-front-skill:front-setup audit-only`.
+
+Update to a new version with `/plugin marketplace update team-front`.
+
 ## Install
 
 ### Option A — Claude Code plugin (recommended)
 
 ```text
-/plugin marketplace add <path-or-git-url-of-this-repo>
+/plugin marketplace add jszsource/team-front-skill
 /plugin install team-front-skill@team-front
 ```
+
+You can also use a full git URL or a local path in place of `jszsource/team-front-skill`.
 
 Plugin commands and skills are namespaced, e.g. `/team-front-skill:front-setup`,
 `/team-front-skill:front-template next`. After a new version is published,
 refresh the marketplace (`/plugin marketplace update team-front`) and update the
 plugin from the `/plugin` menu.
 
-### Option B — copy into `.claude/` with the installer
+### Option B — enable it for a whole frontend repo (team-wide)
+
+Commit this to the **frontend project's** `.claude/settings.json`. Anyone who
+opens that project in Claude Code is asked to install the plugin, so nobody
+runs any commands by hand:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "team-front": {
+      "source": { "source": "github", "repo": "jszsource/team-front-skill" }
+    }
+  },
+  "enabledPlugins": {
+    "team-front-skill@team-front": true
+  }
+}
+```
+
+If the file already exists, merge these keys into it.
+
+### Option C — copy into `.claude/` with the installer
 
 From the project root (where `.claude/` should live):
 
