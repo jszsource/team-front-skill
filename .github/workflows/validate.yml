@@ -26,6 +26,9 @@ jobs:
       - name: Eval scorer vs golden report
         run: node scripts/eval-review.mjs evals/review-fixture/golden-report.txt
 
+      - name: Eval scorer unit tests
+        run: node scripts/test-scorer.mjs
+
       - name: Shell syntax
         run: |
           for f in install.sh uninstall.sh; do sh -n "$f"; done

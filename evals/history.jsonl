@@ -1,0 +1,1 @@
+{"date":"2026-10-10T16:25:34.402Z","version":"2.1.0","models":["claude-opus-5-5"],"runs":3,"meanRecall":1,"minRecall":1,"maxRecall":1,"stddevRecall":0,"passRate":1,"falsePositiveRuns":0,"noSubagentRuns":0,"errorRuns":0,"meanUnmatched":13.7,"costUSD":1.6,"flaky":[],"alwaysMissed":[],"passed":true}

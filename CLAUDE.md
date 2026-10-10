@@ -15,7 +15,9 @@ bash uninstall.sh [target-.claude-dir]
 powershell -ExecutionPolicy Bypass -File uninstall.ps1 [-Target <dir>]
 node scripts/validate.mjs                                     # package QA (npm run validate)
 node scripts/test-hook.mjs                                    # front-check hook + settings.json merge tests (npm run test:hook)
-node scripts/eval-review.mjs <report.txt>                     # score a front-reviewer run (evals/README.md)
+node scripts/run-eval.mjs [--runs N] [--model M]              # real front-reviewer eval: N runs, scored, appended to evals/history.jsonl (costs money)
+node scripts/eval-review.mjs <report.txt>                     # score one front-reviewer report (evals/README.md)
+node scripts/test-scorer.mjs                                  # scorer unit tests
 ```
 
 As a plugin: `/plugin marketplace add <path-or-git-url>` then `/plugin install team-front-skill@team-front` (commands become `/team-front-skill:<name>`).
@@ -34,7 +36,7 @@ Installers copy `skills/*/` (replacing each skill folder wholesale, after backin
 - `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json` — plugin manifest and single-plugin marketplace (`team-front-skill@team-front`).
 - `VERSION`, `CHANGELOG.md`, `package.json` (only for `npm run validate`).
 - `scripts/validate.mjs` — zero-dependency checks: frontmatter (descriptions ≤ 500 chars), cross-references, reference index, version consistency, installer parity, component/hook line limits matching the STANDARDS smells row, eval fixture consistency, no external URLs in rule text; warns (non-failing) when STANDARDS "Last reviewed" is > 180 days old. `.github/workflows/validate.yml` runs it plus the hook tests, installer smoke tests and the eval scorer on `golden-report.txt`.
-- `evals/review-fixture/` — deliberately broken Next.js app + `expected.json` (findings by file, § and keyword, plus `mustNotFlag` traps) + `golden-report.txt`; `scripts/eval-review.mjs <report>` scores a real front-reviewer run (see `evals/README.md`). Not shipped by the installers. New fixture violation → update the fixture, `expected.json` and `golden-report.txt` together.
+- `evals/review-fixture/` — deliberately broken Next.js app + `expected.json` (findings by file, § and keyword, plus `mustNotFlag` traps) + `golden-report.txt`; `scripts/run-eval.mjs` runs the real reviewer N times in a temp copy outside the repo (answers never copied), scores each run with `scoreReport` from `scripts/eval-review.mjs` (a finding = a `path[:line] — §N` line), writes `evals/results/` (gitignored) and appends to `evals/history.jsonl` (committed trend). Manual CI: `.github/workflows/eval.yml`. See `evals/README.md`. Not shipped by the installers. New fixture violation → update the fixture, `expected.json` and `golden-report.txt` together.
 - `LICENSE` — MIT.
 
 ### Path conventions (easy to break)

@@ -1,6 +1,6 @@
 {
   "name": "team-front-skill",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "private": true,
   "license": "MIT",
   "description": "Claude Code package (Markdown + one hook script); this file exists only to run the repo validator, hook tests and eval scorer.",
@@ -11,6 +11,8 @@
   "scripts": {
     "validate": "node scripts/validate.mjs",
     "eval:review": "node scripts/eval-review.mjs",
-    "test:hook": "node scripts/test-hook.mjs"
+    "eval:run": "node scripts/run-eval.mjs",
+    "test:hook": "node scripts/test-hook.mjs",
+    "test:scorer": "node scripts/test-scorer.mjs"
   }
 }

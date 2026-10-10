@@ -6,6 +6,29 @@ The version here must match `VERSION`, `.claude-plugin/*.json`, `package.json`
 and the status line of `skills/team-frontend/STANDARDS.md` (checked by
 `node scripts/validate.mjs`).
 
+## [2.1.1] - 2026-10-10
+
+Repo tooling only — shipped skills, agents, command and hook are unchanged.
+
+### Added
+
+- Real reviewer eval: `scripts/run-eval.mjs` (`npm run eval:run`) runs
+  `front-reviewer` N times on the fixture in an isolated temp copy (no
+  answers, no repo `CLAUDE.md`, no user plugins), scores each run and reports
+  mean/min/max/σ recall, false-positive runs, per-finding hit rate (flaky /
+  always missed), findings outside `expected.json`, cost, and whether the
+  subagent really ran. Results in `evals/results/`; trend in
+  `evals/history.jsonl`. Manual GitHub workflow `reviewer-eval`.
+- `scripts/test-scorer.mjs` (in CI).
+
+### Fixed
+
+- Scorer counted reviewer prose that mentions a § ("CatalogNav.tsx has no
+  size finding … under the §3.1 limit") as a finding, so a correct report was
+  failed as a false positive. Only `path[:line] — §N` lines count now. The
+  old manual instructions also ran the model inside the fixture folder, where
+  `expected.json` and `golden-report.txt` were readable.
+
 ## [2.1.0] - 2026-10-10
 
 ### Added

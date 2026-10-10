@@ -1,0 +1,55 @@
+name: reviewer-eval
+
+# Real front-reviewer eval against evals/review-fixture (calls the model, costs money).
+# Manual only. Needs the ANTHROPIC_API_KEY repository secret.
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Number of reviewer runs
+        default: "3"
+      model:
+        description: Model (empty = Claude Code default)
+        default: ""
+      budget:
+        description: Max USD per run
+        default: "3"
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run reviewer eval
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RUNS: ${{ inputs.runs }}
+          MODEL: ${{ inputs.model }}
+          BUDGET: ${{ inputs.budget }}
+        run: |
+          set -- --runs "$RUNS" --parallel "$RUNS" --budget "$BUDGET"
+          if [ -n "$MODEL" ]; then set -- "$@" --model "$MODEL"; fi
+          node scripts/run-eval.mjs "$@"
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reviewer-eval
+          path: |
+            evals/results/
+            evals/history.jsonl
+          if-no-files-found: ignore

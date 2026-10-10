@@ -1,3 +1,4 @@
 node_modules/
 evals/review-fixture/.claude/
 review-report*.txt
+evals/results/
