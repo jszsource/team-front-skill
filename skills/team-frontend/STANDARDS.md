@@ -1,6 +1,6 @@
 # Frontend Engineering Standards
 
-> Status: **v1.2.0** · Owner: Frontend Team · Last reviewed: 2026-10-10
+> Status: **v1.3.0** · Owner: Frontend Team · Last reviewed: 2026-10-10
 > Applies to: every Next.js and React (SPA) project owned by the team.
 > This document is the single source of truth. The `team-frontend` skill, the
 > `front-reviewer` / `front-refactorer` agents and the `/front-setup` command all
@@ -173,6 +173,8 @@ must justify itself. Replace:
 | Reading a non-reactive latest value    | `useEffectEvent` (React 19.2+)                   |
 | Notifying parent of a change           | call parent callback in the handler              |
 | Form state                             | react-hook-form                                  |
+| Reading `window.location` / `navigator` for an action | read it inside the event handler  |
+| Responsive / browser-dependent render  | Tailwind breakpoints; `useSyncExternalStore` hook with a server snapshot |
 
 ESLint: `react-hooks/exhaustive-deps` is `error`. React Compiler is enabled, so
 manual `useMemo` / `useCallback` are only added when profiling shows a need.
@@ -210,6 +212,34 @@ manual `useMemo` / `useCallback` are only added when profiling shows a need.
   in `shared/config/env.server.ts` with `import 'server-only'` (`serverEnv.API_URL`).
   Validate both with zod; `process.env` is read only in `shared/config/env*.ts`.
 - `server-only` package import in any module that must never reach the client.
+- **App Router only.** No Pages Router APIs: `pages/`, `getServerSideProps`,
+  `getStaticProps`, `getStaticPaths`, `next/router`, `next/head`, `_app`/`_document`.
+- Server Actions live in a slice's `api/*.action.ts` with a file-level
+  `'use server'` and export **only async functions**. Never declare an inline
+  `'use server'` function inside a `"use client"` file — import the action.
+  `<form action={action}>` without `useActionState` returns `void`; when the UI
+  needs a result, use `useActionState` and return a typed state.
+- `redirect()` / `notFound()` throw — call them outside `try/catch` (or rethrow),
+  after `updateTag`/`revalidateTag`.
+- Navigation: `<Link>` everywhere it is a link; server code uses `redirect()`;
+  client code uses `useRouter` from `next/navigation`. Never
+  `window.location.href = …` for internal routes (full reload).
+  `useRouter`/`usePathname`/`useParams`/`useSearchParams` are client-only —
+  server components read the `params` / `searchParams` props.
+- A client component calling `useSearchParams()` is rendered inside a
+  `<Suspense>` boundary (otherwise the route bails out of static rendering).
+  Prefer reading `searchParams` in the page and passing values down.
+- Dynamic segments: unknown id → `notFound()`; finite, known sets →
+  `generateStaticParams` (+ `dynamicParams = false` when the set is closed).
+- Route handlers (`route.ts`) only for external callers: webhooks, OAuth
+  callbacks, BFF proxy, files/streams, CMS draft mode. Never a route handler
+  just so our own components can fetch — call the server function directly.
+- Parallel routes (`@slot`) always ship a `default.tsx`; route-based modals use
+  `@modal` + intercepting `(.)segment` and close with `router.back()`.
+- Cookies are written only on the server (Server Action, route handler,
+  `proxy.ts`) via `(await cookies()).set(…)` with explicit `httpOnly`, `secure`,
+  `sameSite`, `path`, `maxAge`. Client code never writes `document.cookie`;
+  a client that needs a cookie value gets it as a prop from the server.
 
 ---
 

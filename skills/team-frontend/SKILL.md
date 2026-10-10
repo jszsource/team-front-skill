@@ -106,7 +106,7 @@ green without running.
 
 | File | Read when |
 | --- | --- |
-| `references/nextjs.md` | Next.js project: routing, RSC, caching, Server Actions, proxy |
+| `references/nextjs.md` | Next.js project: routing, RSC, caching, Server Actions, proxy, navigation, route handlers, parallel/intercepting routes, cookies |
 | `references/react-tanstack-router.md` | React (non-Next) project routing |
 | `references/fsd.md` | deciding where any file goes |
 | `references/components.md` | writing/decomposing components, boolean props |

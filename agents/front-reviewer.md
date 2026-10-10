@@ -46,7 +46,13 @@ reference file only when a finding needs its detail. Do not browse the web.
    `loading.tsx`/`error.tsx`/`global-error.tsx`; `middleware.ts` on Next ≥16;
    `process.env` outside `shared/config/env*.ts`; server module without
    `import 'server-only'`; `<img>`/`<a>` instead of `next/image`/`next/link`;
-   `revalidateTag` without the second argument; `auth: true` data in `"use cache"`.
+   `revalidateTag` without the second argument; `auth: true` data in `"use cache"`;
+   Pages Router APIs (`getServerSideProps`, `next/router`, `next/head`);
+   inline `'use server'` in a client file or non-async export from an action
+   file; `redirect()`/`notFound()` inside `try`; `window.location.href` for
+   internal navigation; `useSearchParams` without a `<Suspense>` parent;
+   route handler used only by our own UI; missing `notFound()` for a 404;
+   `@slot` without `default.tsx`; `document.cookie` writes.
 6. **React mode only** — routing not via TanStack Router, data not loaded in
    route `loader`, untyped navigation.
 7. **HTTP (§6)** — `axios` imported outside `shared/api`; **axios or `http`

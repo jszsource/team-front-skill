@@ -6,6 +6,27 @@ The version here must match `VERSION`, `.claude-plugin/*.json`, `package.json`
 and the status line of `skills/team-frontend/STANDARDS.md` (checked by
 `node scripts/validate.mjs`).
 
+## [1.3.0] - 2026-10-10
+
+### Added
+
+- STANDARDS §5: App Router only (no Pages Router APIs); Server Action file
+  rules (`'use server'` files export only async functions, no inline actions in
+  client files, `void` form action vs `useActionState`); `redirect()`/`notFound()`
+  outside `try/catch`; navigation (`<Link>`/`redirect()`/`useRouter`, no
+  `window.location` for internal routes); `useSearchParams` inside `<Suspense>`;
+  `notFound()` + `generateStaticParams`/`dynamicParams`; route handlers only for
+  external callers; parallel-route `default.tsx` and intercepting-route modals;
+  cookies written only on the server.
+- STANDARDS §4: replacements for reading `window`/`navigator` and
+  browser-dependent rendering.
+- `references/nextjs.md` §11–17: navigation and URL state, route handlers,
+  dynamic segments/404, parallel and intercepting routes, cookies, draft mode,
+  root layout/special files; Server Action file shapes; Pages → App Router
+  mapping table.
+- `references/use-effect.md`: new replacement rows and a hydration-safety section.
+- front-reviewer: matching Next.js checks.
+
 ## [1.2.0] - 2026-10-10
 
 ### Added

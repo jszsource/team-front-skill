@@ -23,6 +23,20 @@ a smell. Before writing one, find your case below.
 | Form field state/validation | react-hook-form + zod. |
 | Debounce search input | `useDeferredValue` or debounced handler; query key holds the value. |
 | URL-driven state | search params (Next `useSearchParams` / TanStack Router `validateSearch`). |
+| Copy/share the current URL, read `navigator` for an action | Read `window.location` / `navigator` inside the click handler. |
+| Show different UI per viewport | Tailwind breakpoints (`hidden md:block`) — no JS. |
+| Render based on a browser-only value (UA, `matchMedia`, online) | `useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)` in a `shared/hooks` hook. |
+| Navigate after an action | `<Link>`, `redirect()` in the Server Action, or `router.push` in the handler — never an effect watching a flag. |
+
+## Hydration safety (Next / SSR)
+
+Client components are also rendered on the server. A value that differs
+between server and browser (`navigator`, `window`, `Date.now()`,
+`Math.random()`, `localStorage`) must not be read **during render** behind a
+`typeof window !== 'undefined'` check — that causes a hydration mismatch.
+Use, in order: CSS, a `useSyncExternalStore` hook with a server snapshot,
+passing the value from the server (cookie, header), or `next/dynamic` with
+`ssr: false` for a whole browser-only widget.
 
 ## Legitimate uses (still keep them small)
 
