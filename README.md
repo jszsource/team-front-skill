@@ -1,5 +1,7 @@
 # team-front-skill
 
+🇦🇿 [Azərbaycanca oxu](README.az.md)
+
 Claude Code package with the team's frontend standards for Next.js and React.
 Current version: see `VERSION` (changes in `CHANGELOG.md`).
 
