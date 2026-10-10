@@ -20,6 +20,7 @@ Cari versiya: `VERSION` faylına bax (dəyişikliklər `CHANGELOG.md`-dədir).
 | `agents/front-reviewer.md` | Subagent: standarta görə yalnız oxuyan review |
 | `agents/front-refactorer.md` | Subagent: kodu standarta uyğun bölür/refactor edir, testləri yaşıl saxlayır |
 | `commands/front-setup.md` | `/front-setup [audit-only]`: audit + tooling, testlər, CI, http, təhlükəsizlik, monitorinq, FSD qurulması |
+| `hooks/` | `front-check.mjs` PostToolUse hook-u (hər edit-dən sonra sətir limitləri + ESLint) və onun plugin qeydiyyatı `hooks.json` |
 | `.claude-plugin/` | Plugin manifesti (`plugin.json`) və marketplace (`marketplace.json`) |
 | `install.*` / `uninstall.*` | `.claude/` qovluğuna kopyalama ilə quraşdırma və silmə |
 | `scripts/validate.mjs` | Paketin yoxlanması (lokalda və GitHub Actions-da işləyir) |
@@ -138,9 +139,25 @@ bash /path/to/team-front-skill/uninstall.sh [target-.claude-dir]
 powershell -ExecutionPolicy Bypass -File C:\path\to\team-front-skill\uninstall.ps1 [-Target <dir>]
 ```
 
-Yalnız paketlə gələn skill, agent və command-ları silir; `.team-front-backup/`
-içindəki backup-lar saxlanılır. Plugin kimi quraşdırılıbsa:
-`/plugin uninstall team-front-skill@team-front`.
+Yalnız paketlə gələn skill, agent, command və hook-u (və onun `settings.json`
+qeydini) silir; `.team-front-backup/` içindəki backup-lar saxlanılır. Plugin
+kimi quraşdırılıbsa: `/plugin uninstall team-front-skill@team-front`.
+
+### Edit zamanı yoxlama (hook)
+
+Hər `Write`/`Edit`-dən sonra `hooks/front-check.mjs` dəyişən faylı yoxlayır və
+problemləri Claude-a qaytarır, Claude da onları düzəldir:
+
+- 150 sətirdən uzun `.tsx` (STANDARDS §3.1) və ya 80 sətirdən uzun `use*.ts(x)`
+  hook (§9); ESLint `max-lines` kimi sayılır (boş sətirlər və şərhlər
+  sayılmır); testlər, stories və `src/shared/ui/`-dakı shadcn mənbələri istisnadır;
+- layihədə ESLint quraşdırılıbsa: həmin fayla `--max-warnings 0` ilə ESLint (§11).
+
+Yalnız ən yaxın `package.json`-u `react` və ya `next`-dən asılı olan
+layihələrdə işləyir, Node 20+ tələb edir. Plugin onu `hooks/hooks.json` ilə
+qeydiyyata alır; installer-lər onu `.claude/hooks/`-a kopyalayır və
+`.claude/settings.json`-a əlavə edir (digər ayarlar saxlanılır). Söndürmək:
+`TEAM_FRONT_HOOK=off`, yalnız ESLint hissəsini: `TEAM_FRONT_HOOK_ESLINT=off`.
 
 ## İstifadə
 
@@ -165,6 +182,7 @@ Plugin kimi quraşdırılıbsa, əmrlərin əvvəlinə `team-front-skill:` əlav
 
 ```bash
 node scripts/validate.mjs     # və ya: npm run validate   (Node 20+, dependency yoxdur)
+node scripts/test-hook.mjs    # və ya: npm run test:hook  (front-check hook + settings.json birləşdirmə)
 ```
 
 Frontmatter-i (description uzunluğu ≤ 500 daxil), çarpaz istinadları,

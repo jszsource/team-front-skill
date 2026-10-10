@@ -6,6 +6,23 @@ The version here must match `VERSION`, `.claude-plugin/*.json`, `package.json`
 and the status line of `skills/team-frontend/STANDARDS.md` (checked by
 `node scripts/validate.mjs`).
 
+## [2.1.0] - 2026-10-10
+
+### Added
+
+- `front-check` PostToolUse hook (`hooks/front-check.mjs`, zero
+  dependencies): after every `Write`/`Edit` it reports a `.tsx` file over
+  150 lines (§3.1) or a `use*.ts(x)` hook over 80 lines (§9) — counted like
+  ESLint `max-lines` — and, when the project has ESLint installed, the
+  file's ESLint errors/warnings (§11). Runs only in `react`/`next` projects;
+  `TEAM_FRONT_HOOK=off` / `TEAM_FRONT_HOOK_ESLINT=off` disable it.
+- Plugin registration in `hooks/hooks.json`; the installers copy the hook to
+  `.claude/hooks/` and register/unregister it in `.claude/settings.json` via
+  `scripts/hook-settings.mjs` (other settings and hooks are kept).
+- `scripts/test-hook.mjs` (`npm run test:hook`) and CI coverage; the validator
+  checks `hooks/hooks.json`, hook limits vs STANDARDS and installer hook
+  handling.
+
 ## [2.0.0] - 2026-10-10
 
 ### Breaking

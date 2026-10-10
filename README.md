@@ -20,6 +20,7 @@ Current version: see `VERSION` (changes in `CHANGELOG.md`).
 | `agents/front-reviewer.md` | Subagent: read-only review against the standard |
 | `agents/front-refactorer.md` | Subagent: decomposes/refactors code to the standard, keeps tests green |
 | `commands/front-setup.md` | `/front-setup [audit-only]`: audit + set up tooling, tests, CI, http, security, monitoring, FSD |
+| `hooks/` | `front-check.mjs` PostToolUse hook (line limits + ESLint after every edit) and its plugin registration `hooks.json` |
 | `.claude-plugin/` | Plugin manifest (`plugin.json`) and marketplace (`marketplace.json`) |
 | `install.*` / `uninstall.*` | Copy-based install into a `.claude/` folder, and removal |
 | `scripts/validate.mjs` | Package QA (run locally and in GitHub Actions) |
@@ -139,9 +140,26 @@ bash /path/to/team-front-skill/uninstall.sh [target-.claude-dir]
 powershell -ExecutionPolicy Bypass -File C:\path\to\team-front-skill\uninstall.ps1 [-Target <dir>]
 ```
 
-Removes exactly the shipped skills, agents and command; backups in
-`.team-front-backup/` are kept. Plugin installs are removed with
-`/plugin uninstall team-front-skill@team-front`.
+Removes exactly the shipped skills, agents, command and hook (and its entry in
+`settings.json`); backups in `.team-front-backup/` are kept. Plugin installs
+are removed with `/plugin uninstall team-front-skill@team-front`.
+
+### Edit-time check (hook)
+
+After every `Write`/`Edit`, `hooks/front-check.mjs` checks the edited file and
+reports problems back to Claude, which then fixes them:
+
+- `.tsx` over 150 lines (STANDARDS §3.1) or a `use*.ts(x)` hook over 80 lines
+  (§9), counted like ESLint `max-lines` (blank lines and comments skipped);
+  tests, stories and shadcn sources in `src/shared/ui/` are exempt;
+- if the project has ESLint installed: ESLint on that file with
+  `--max-warnings 0` (§11).
+
+It runs only in projects whose nearest `package.json` depends on `react` or
+`next`, and needs Node 20+. The plugin registers it via `hooks/hooks.json`; the
+installers copy it to `.claude/hooks/` and add it to `.claude/settings.json`
+(other settings are kept). Turn it off with `TEAM_FRONT_HOOK=off`, or only the
+ESLint part with `TEAM_FRONT_HOOK_ESLINT=off`.
 
 ## Use
 
@@ -166,6 +184,7 @@ With a plugin install, prefix commands with `team-front-skill:`.
 
 ```bash
 node scripts/validate.mjs     # or: npm run validate   (Node 20+, no dependencies)
+node scripts/test-hook.mjs    # or: npm run test:hook  (front-check hook + settings.json merge)
 ```
 
 Checks frontmatter (incl. description length ≤ 500), cross-references, the

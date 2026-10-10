@@ -5,8 +5,10 @@
 # - If an installed skill folder differs from the one being installed (local
 #   edits or an older version), it is backed up to
 #   <target>\.team-front-backup\<skill>-<old-version> before being replaced.
-# - A differing installed agent/command file is backed up to
-#   <target>\.team-front-backup\<agents|commands>-<old-version>\<file>.
+# - A differing installed agent/command/hook file is backed up to
+#   <target>\.team-front-backup\<agents|commands|hooks>-<old-version>\<file>.
+# - Registers the front-check PostToolUse hook in <target>\settings.json
+#   (needs node; other settings are kept).
 # Keep behaviour identical to install.sh.
 param([string]$Target = ".\.claude")
 $ErrorActionPreference = "Stop"
@@ -35,7 +37,7 @@ function Read-Stamp([string]$Path) {
     return (Get-Content -Raw $Path).Trim()
 }
 
-foreach ($dir in "skills", "agents", "commands") {
+foreach ($dir in "skills", "agents", "commands", "hooks") {
     New-Item -ItemType Directory -Force -Path (Join-Path $Target $dir) | Out-Null
 }
 
@@ -69,9 +71,9 @@ foreach ($skill in Get-ChildItem -Directory (Join-Path $Src "skills")) {
     # LF line ending, no BOM: identical to install.sh output.
     [System.IO.File]::WriteAllText((Join-Path (Resolve-Path $skillDest).Path $Stamp), "$Version`n")
 }
-# Agents and commands: back up a differing installed file before overwriting it.
-foreach ($kind in "agents", "commands") {
-    foreach ($file in Get-ChildItem -File (Join-Path $Src "$kind/*.md")) {
+# Agents, commands and the hook script: back up a differing installed file before overwriting it.
+foreach ($kind in "agents", "commands", "hooks") {
+    foreach ($file in Get-ChildItem -File (Join-Path $Src "$kind/*") -Include "*.md", "*.mjs") {
         $dest = Join-Path $Target "$kind/$($file.Name)"
         if ((Test-Path $dest) -and ((Get-FileHash $file.FullName).Hash -ne (Get-FileHash $dest).Hash)) {
             $backup = Join-Path $BackupRoot "$kind-$OldVersion/$($file.Name)"
@@ -84,5 +86,12 @@ foreach ($kind in "agents", "commands") {
     }
 }
 
+if (Get-Command node -ErrorAction SilentlyContinue) {
+    & node (Join-Path $Src "scripts/hook-settings.mjs") add $Target
+    if ($LASTEXITCODE -ne 0) { throw "hook-settings.mjs failed" }
+} else {
+    Write-Host "WARNING: node not found - hooks/front-check.mjs copied but not registered in $Target\settings.json"
+}
+
 Write-Host "team-front-skill: $OldVersion -> $Version"
-Write-Host "Installed team-frontend + front-template skills, front-reviewer/front-refactorer agents and /front-setup into $Target"
+Write-Host "Installed team-frontend + front-template skills, front-reviewer/front-refactorer agents, /front-setup and the front-check hook into $Target"

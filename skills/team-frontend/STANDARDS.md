@@ -1,6 +1,6 @@
 # Frontend Engineering Standards
 
-> Status: **v2.0.0** · Owner: Frontend Team · Last reviewed: 2026-10-10
+> Status: **v2.1.0** · Owner: Frontend Team · Last reviewed: 2026-10-10
 > Applies to: every Next.js and React (SPA) project owned by the team (profiles: §1.1).
 > This document is the single source of truth. The `team-frontend` skill, the
 > `front-reviewer` / `front-refactorer` agents and the `/front-setup` command all
@@ -200,6 +200,8 @@ src/
 
 - **Hard limit: 150 lines per `.tsx` file** — the whole file (imports, types,
   helpers), blank lines/comments excluded (ESLint `max-lines`). Target ≤ 100. A function component body should fit on one screen.
+  Claude Code also enforces it at edit time with the package's `front-check`
+  hook (with the hook limit from §9 and the project's ESLint).
 - When a component grows, decompose it. Sub-components go into a
   `components/` folder **next to the parent**:
 

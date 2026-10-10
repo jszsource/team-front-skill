@@ -20,6 +20,9 @@ jobs:
       - name: Validate package (frontmatter, refs, index, versions, installers, URLs)
         run: node scripts/validate.mjs
 
+      - name: front-check hook tests
+        run: node scripts/test-hook.mjs
+
       - name: Eval scorer vs golden report
         run: node scripts/eval-review.mjs evals/review-fixture/golden-report.txt
 
@@ -47,9 +50,11 @@ jobs:
           sh install.sh "$t"
           for f in skills/team-frontend/SKILL.md skills/team-frontend/STANDARDS.md \
                    skills/front-template/SKILL.md agents/front-reviewer.md \
-                   agents/front-refactorer.md commands/front-setup.md; do
+                   agents/front-refactorer.md commands/front-setup.md hooks/front-check.mjs; do
             test -f "$t/$f" || { echo "missing $f"; exit 1; }
           done
+          test ! -e "$t/hooks/hooks.json"
+          grep -q "front-check.mjs" "$t/settings.json"
           test "$(cat "$t/skills/team-frontend/.installed-version")" = "$version"
           # Re-install without changes: no backup.
           sh install.sh "$t"
@@ -70,6 +75,8 @@ jobs:
           test ! -e "$t/skills/front-template"
           test ! -e "$t/agents/front-reviewer.md"
           test ! -e "$t/commands/front-setup.md"
+          test ! -e "$t/hooks/front-check.mjs"
+          if grep -q "front-check.mjs" "$t/settings.json"; then echo "hook still registered"; exit 1; fi
           test -d "$t/.team-front-backup"
 
       - name: Smoke test install.ps1 / uninstall.ps1
@@ -81,9 +88,11 @@ jobs:
           ./install.ps1 -Target $t
           foreach ($f in 'skills/team-frontend/SKILL.md', 'skills/team-frontend/STANDARDS.md',
                          'skills/front-template/SKILL.md', 'agents/front-reviewer.md',
-                         'agents/front-refactorer.md', 'commands/front-setup.md') {
+                         'agents/front-refactorer.md', 'commands/front-setup.md', 'hooks/front-check.mjs') {
             if (-not (Test-Path (Join-Path $t $f))) { throw "missing $f" }
           }
+          if (Test-Path (Join-Path $t 'hooks/hooks.json')) { throw 'hooks.json must not be copied' }
+          if (-not (Select-String -Quiet 'front-check.mjs' (Join-Path $t 'settings.json'))) { throw 'hook not registered' }
           $stamp = (Get-Content -Raw (Join-Path $t 'skills/team-frontend/.installed-version')).Trim()
           if ($stamp -ne $version) { throw "stamp $stamp != $version" }
           ./install.ps1 -Target $t
@@ -98,6 +107,7 @@ jobs:
           if (-not (Select-String -Quiet 'agent edit' $agentBackup)) { throw 'agent backup missing local edit' }
           if (Select-String -Quiet 'agent edit' (Join-Path $t 'agents/front-reviewer.md')) { throw 'agent edit not replaced' }
           ./uninstall.ps1 -Target $t
-          foreach ($f in 'skills/team-frontend', 'skills/front-template', 'agents/front-reviewer.md', 'commands/front-setup.md') {
+          foreach ($f in 'skills/team-frontend', 'skills/front-template', 'agents/front-reviewer.md', 'commands/front-setup.md', 'hooks/front-check.mjs') {
             if (Test-Path (Join-Path $t $f)) { throw "not removed: $f" }
           }
+          if (Select-String -Quiet 'front-check.mjs' (Join-Path $t 'settings.json')) { throw 'hook still registered' }

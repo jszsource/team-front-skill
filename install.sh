@@ -6,8 +6,10 @@
 # - If an installed skill folder differs from the one being installed (local
 #   edits or an older version), it is backed up to
 #   <target>/.team-front-backup/<skill>-<old-version> before being replaced.
-# - A differing installed agent/command file is backed up to
-#   <target>/.team-front-backup/<agents|commands>-<old-version>/<file>.
+# - A differing installed agent/command/hook file is backed up to
+#   <target>/.team-front-backup/<agents|commands|hooks>-<old-version>/<file>.
+# - Registers the front-check PostToolUse hook in <target>/settings.json
+#   (needs node; other settings are kept).
 # Keep behaviour identical to install.ps1.
 set -e
 
@@ -17,7 +19,7 @@ STAMP=".installed-version"
 VERSION="$(tr -d ' \r\n' < "$SRC/VERSION")"
 BACKUP_ROOT="$TARGET/.team-front-backup"
 
-mkdir -p "$TARGET/skills" "$TARGET/agents" "$TARGET/commands"
+mkdir -p "$TARGET/skills" "$TARGET/agents" "$TARGET/commands" "$TARGET/hooks"
 
 OLD_VERSION="none"
 if [ -f "$TARGET/skills/team-frontend/$STAMP" ]; then
@@ -49,9 +51,10 @@ for skill in "$SRC"/skills/*/; do
   cp -R "${skill%/}" "$TARGET/skills/"
   printf '%s\n' "$VERSION" > "$dest/$STAMP"
 done
-# Agents and commands: back up a differing installed file before overwriting it.
-for kind in agents commands; do
-  for file in "$SRC/$kind"/*.md; do
+# Agents, commands and the hook script: back up a differing installed file before overwriting it.
+for kind in agents commands hooks; do
+  for file in "$SRC/$kind"/*.md "$SRC/$kind"/*.mjs; do
+    [ -f "$file" ] || continue
     name="$(basename "$file")"
     dest="$TARGET/$kind/$name"
     if [ -f "$dest" ] && ! cmp -s "$file" "$dest"; then
@@ -65,5 +68,11 @@ for kind in agents commands; do
   done
 done
 
+if command -v node > /dev/null 2>&1; then
+  node "$SRC/scripts/hook-settings.mjs" add "$TARGET"
+else
+  echo "WARNING: node not found - hooks/front-check.mjs copied but not registered in $TARGET/settings.json"
+fi
+
 echo "team-front-skill: $OLD_VERSION -> $VERSION"
-echo "Installed team-frontend + front-template skills, front-reviewer/front-refactorer agents and /front-setup into $TARGET"
+echo "Installed team-frontend + front-template skills, front-reviewer/front-refactorer agents, /front-setup and the front-check hook into $TARGET"

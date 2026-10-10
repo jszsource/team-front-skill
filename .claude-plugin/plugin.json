@@ -1,7 +1,7 @@
 {
   "name": "team-front-skill",
-  "version": "2.0.0",
-  "description": "Team frontend standards for Next.js (App Router) and React (Vite + TanStack Router): auto-applied team-frontend skill, /front-template scaffolding, front-reviewer and front-refactorer agents, and the /front-setup command.",
+  "version": "2.1.0",
+  "description": "Team frontend standards for Next.js (App Router) and React (Vite + TanStack Router): auto-applied team-frontend skill, /front-template scaffolding, front-reviewer and front-refactorer agents, the /front-setup command, and a front-check hook (line limits + ESLint after every edit).",
   "license": "MIT",
   "author": {
     "name": "Frontend Team"

@@ -85,6 +85,7 @@ const skillFiles = readdirSync(SKILLS, { withFileTypes: true })
   .map((e) => join(SKILLS, e.name, 'SKILL.md'));
 const agentFiles = mdIn(join(ROOT, 'agents'));
 const commandFiles = mdIn(join(ROOT, 'commands'));
+const hookScripts = walk(join(ROOT, 'hooks'), (p) => p.endsWith('.mjs'));
 
 for (const file of skillFiles) {
   if (!check(existsSync(file), `[frontmatter] missing ${rel(file)}`)) continue;
@@ -226,24 +227,27 @@ for (const file of docFiles) {
   }
   for (const s of ['install.sh', 'install.ps1']) {
     if (!src[s]) continue;
-    for (const dir of ['skills', 'agents', 'commands']) {
+    for (const dir of ['skills', 'agents', 'commands', 'hooks']) {
       check(new RegExp(`\\b${dir}\\b`).test(src[s]), `[installers] ${s} does not handle "${dir}"`);
     }
     check(src[s].includes('.installed-version'), `[installers] ${s} does not write .installed-version`);
     check(src[s].includes('.team-front-backup'), `[installers] ${s} does not back up modified skills to .team-front-backup`);
     check(src[s].includes('VERSION'), `[installers] ${s} does not read VERSION`);
+    check(/hook-settings\.mjs"?\)? add\b/.test(src[s]), `[installers] ${s} does not register the hook (scripts/hook-settings.mjs add)`);
   }
   // Uninstallers must remove every shipped skill, agent and command.
   const shipped = [
     ...skillFiles.map((f) => `skills/${basename(dirname(f))}`),
     ...agentFiles.map((f) => `agents/${basename(f)}`),
     ...commandFiles.map((f) => `commands/${basename(f)}`),
+    ...hookScripts.map((f) => `hooks/${basename(f)}`),
   ];
   for (const s of ['uninstall.sh', 'uninstall.ps1']) {
     if (!src[s]) continue;
     for (const item of shipped) {
       check(src[s].includes(item), `[installers] ${s} does not remove "${item}"`);
     }
+    check(/hook-settings\.mjs"?\)? remove\b/.test(src[s]), `[installers] ${s} does not unregister the hook (scripts/hook-settings.mjs remove)`);
   }
   if (src['install.sh']) {
     check(!/\r/.test(readFileSync(join(ROOT, 'install.sh'), 'utf8')), '[installers] install.sh has CRLF line endings');
@@ -291,6 +295,15 @@ for (const file of [...skillFiles.filter(existsSync), ...agentFiles, ...commandF
       ['component', /(\d+)-line component/g],
       ['hook', /\bhooks?\s*>\s*(\d+)/gi],
     ];
+    // The hook script enforces the same numbers at edit time.
+    for (const file of hookScripts) {
+      const text = read(file);
+      for (const [kind, name] of [['component', 'COMPONENT_MAX_LINES'], ['hook', 'HOOK_MAX_LINES']]) {
+        const m = text.match(new RegExp(`const ${name} = (\\d+);`));
+        if (!m) continue;
+        check(Number(m[1]) === limits[kind], `[limits] ${rel(file)}: ${name} = ${m[1]} ≠ ${limits[kind]} from STANDARDS.md`);
+      }
+    }
     for (const file of [...mdIn(SKILLS), ...agentFiles, ...commandFiles]) {
       const lines = read(file).split('\n');
       lines.forEach((line, i) => {
@@ -303,6 +316,27 @@ for (const file of [...skillFiles.filter(existsSync), ...agentFiles, ...commandF
           }
         }
       });
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// h2) Plugin hooks: hooks/hooks.json is valid and runs shipped scripts
+// ---------------------------------------------------------------------------
+{
+  const hooksJson = join(ROOT, 'hooks', 'hooks.json');
+  if (check(existsSync(hooksJson), '[hooks] hooks/hooks.json missing')) {
+    let config;
+    try {
+      config = JSON.parse(read(hooksJson));
+    } catch (e) {
+      errors.push(`[hooks] hooks/hooks.json: invalid JSON (${e.message})`);
+    }
+    const commands = Object.values(config?.hooks ?? {}).flat().flatMap((g) => g.hooks ?? []).map((h) => h.command ?? '');
+    check(commands.length > 0, '[hooks] hooks/hooks.json registers no hook commands');
+    for (const cmd of commands) {
+      const script = cmd.match(/\$\{CLAUDE_PLUGIN_ROOT\}\/([^"\s]+)/)?.[1];
+      check(Boolean(script && existsSync(join(ROOT, script))), `[hooks] hooks/hooks.json: "${cmd}" must run a shipped script via \${CLAUDE_PLUGIN_ROOT}`);
     }
   }
 }

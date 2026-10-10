@@ -10,8 +10,15 @@ $items = @(
     "skills/front-template",
     "agents/front-reviewer.md",
     "agents/front-refactorer.md",
-    "commands/front-setup.md"
+    "commands/front-setup.md",
+    "hooks/front-check.mjs"
 )
+if (Get-Command node -ErrorAction SilentlyContinue) {
+    & node (Join-Path $PSScriptRoot "scripts/hook-settings.mjs") remove $Target
+    if ($LASTEXITCODE -ne 0) { throw "hook-settings.mjs failed" }
+} else {
+    Write-Host "WARNING: node not found - remove the front-check hook from $Target\settings.json by hand"
+}
 foreach ($item in $items) {
     $path = Join-Path $Target $item
     if (Test-Path $path) {
