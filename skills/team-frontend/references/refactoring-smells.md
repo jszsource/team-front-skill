@@ -57,7 +57,7 @@ Common code smells mapped to React/TS/FSD.
 | Unjustified `useEffect` | see `use-effect.md` |
 | Derived state stored in `useState` | compute during render |
 | Prop drilling > 2 levels | composition or Zustand |
-| Boolean prop soup | composition / variants |
+| Boolean prop soup — booleans that switch layout/structure or behaviour mode (`isCompact`, `withHeader`, `isAdmin`); > 2 such booleans → split | `cva` variants / composition / explicit variant component. State/ARIA-like and native-mirroring booleans (`disabled`, `open`, `checked`, `required`, `loading`, `readOnly`, `invalid`) are fine — see `components.md` |
 | Component defined inside component | move to own file |
 | Unnecessary `"use client"` (Next) | push boundary to a leaf |
 | Server data copied into Zustand | read from Query |

@@ -2,7 +2,7 @@
 
 ## Size limit
 
-- **Max 150 lines per `.tsx` file** (ESLint `max-lines: ["error", { max: 150, skipBlankLines: true, skipComments: true }]`).
+- **Max 150 lines per `.tsx` file** — the whole file, imports, types and helpers included, blank lines and comments excluded (ESLint `max-lines: ["error", { max: 150, skipBlankLines: true, skipComments: true }]`).
 - Target ≤100. Hooks ≤80 lines. Functions ≤40 lines.
 
 ## Decomposition procedure
@@ -62,6 +62,26 @@ Good — compound + explicit variants:
   <Card.Body>…</Card.Body>
 </Card>
 <EditableCard />   // explicit variant component instead of isEditable
+```
+
+### Boolean props — what's allowed
+
+- **Allowed:** state / ARIA-like booleans and props that mirror native
+  attributes — `disabled`, `open`, `checked`, `required`, `loading`,
+  `readOnly`, `invalid`, `selected`, `defaultOpen`. They describe *state*, not
+  a different component.
+- **Not allowed:** booleans that switch layout/structure or behaviour mode —
+  `isCompact`, `withHeader`, `showFooter`, `isEditable`, `isAdmin`. Use `cva`
+  variants (`variant="compact"`), composition (`<Card.Header>`) or an explicit
+  variant component (`<EditableCard/>`).
+- **Rule of thumb:** more than 2 behaviour/structure booleans on one component
+  → split it.
+
+```tsx
+<Button disabled loading>Save</Button>               // ok — state
+<Dialog open onOpenChange={setOpen}>…</Dialog>        // ok — state
+<Card variant="compact">…</Card>                      // ok — cva variant
+<UserTable isAdmin showActions isCompact />           // bad — split / compose
 ```
 
 - Style variants (size, intent) → `cva` variants, not booleans.

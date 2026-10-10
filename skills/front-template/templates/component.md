@@ -65,7 +65,15 @@ export function __Name__({ label, onConfirm }: __Name__Props) {
 }
 ```
 
-## Variants — `cva`, never boolean props
+## Variants — `cva`, not layout/behaviour booleans
+
+- **Fine:** state / ARIA-like booleans and props mirroring native attributes —
+  `disabled`, `open`, `checked`, `required`, `loading`, `readOnly`, `invalid`.
+- **Not fine:** booleans that switch layout, structure or behaviour mode —
+  `isCompact`, `withHeader`, `isAdmin`. Use a `cva` variant, composition
+  (`children` / slots) or an explicit variant component (`<CompactCard/>`).
+- More than 2 behaviour booleans on one component → split it
+  (`../team-frontend/references/components.md`).
 
 ```tsx
 import { cva, type VariantProps } from 'class-variance-authority'
@@ -77,6 +85,17 @@ const __camel__Variants = cva('rounded-lg border p-4', {
 
 type __Name__Props = React.ComponentProps<'div'> & VariantProps<typeof __camel__Variants>
 ```
+
+## Strings, RTL, server code
+
+- i18n enabled (`next-intl` / `react-i18next` in `package.json`): no literal
+  user-facing strings (text, `aria-label`, `alt`, `placeholder`) in
+  `views`/`widgets`/`features` components — `t('key')` from the slice
+  namespace, or receive translated text via props (`entities`, `shared/ui`).
+- Spacing/alignment with logical utilities (`ms-*`/`me-*`, `ps-*`/`pe-*`,
+  `text-start`) so the component works in RTL.
+- A Server Component that needs data calls the slice's `api/*.server.ts`
+  (`serverFetch`); it never imports `http`/axios.
 
 ## Test (when the component has logic or interaction)
 

@@ -1,0 +1,90 @@
+name: validate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate package (frontmatter, refs, index, versions, installers, URLs)
+        run: node scripts/validate.mjs
+
+      - name: Shell syntax
+        run: |
+          for f in install.sh uninstall.sh; do sh -n "$f"; done
+
+      - name: ShellCheck
+        run: shellcheck --shell=sh install.sh uninstall.sh
+
+      - name: PowerShell syntax
+        shell: pwsh
+        run: |
+          foreach ($f in 'install.ps1', 'uninstall.ps1') {
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$errors) | Out-Null
+            if ($errors) { $errors | ForEach-Object { Write-Error "${f}: $_" }; exit 1 }
+          }
+
+      - name: Smoke test install.sh / uninstall.sh
+        run: |
+          set -eu
+          version="$(cat VERSION)"
+          t="$(mktemp -d)/.claude"
+          sh install.sh "$t"
+          for f in skills/team-frontend/SKILL.md skills/team-frontend/STANDARDS.md \
+                   skills/front-template/SKILL.md agents/front-reviewer.md \
+                   agents/front-refactorer.md commands/front-setup.md; do
+            test -f "$t/$f" || { echo "missing $f"; exit 1; }
+          done
+          test "$(cat "$t/skills/team-frontend/.installed-version")" = "$version"
+          # Re-install without changes: no backup.
+          sh install.sh "$t"
+          test ! -e "$t/.team-front-backup"
+          # Local edit: backed up before replacement.
+          echo "local edit" >> "$t/skills/front-template/SKILL.md"
+          out="$(sh install.sh "$t")"
+          echo "$out" | grep -q WARNING
+          grep -q "local edit" "$t/.team-front-backup/front-template-$version/SKILL.md"
+          if grep -q "local edit" "$t/skills/front-template/SKILL.md"; then echo "edit not replaced"; exit 1; fi
+          sh uninstall.sh "$t"
+          test ! -e "$t/skills/team-frontend"
+          test ! -e "$t/skills/front-template"
+          test ! -e "$t/agents/front-reviewer.md"
+          test ! -e "$t/commands/front-setup.md"
+          test -d "$t/.team-front-backup"
+
+      - name: Smoke test install.ps1 / uninstall.ps1
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content -Raw VERSION).Trim()
+          $t = Join-Path ([System.IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N')) '.claude'
+          ./install.ps1 -Target $t
+          foreach ($f in 'skills/team-frontend/SKILL.md', 'skills/team-frontend/STANDARDS.md',
+                         'skills/front-template/SKILL.md', 'agents/front-reviewer.md',
+                         'agents/front-refactorer.md', 'commands/front-setup.md') {
+            if (-not (Test-Path (Join-Path $t $f))) { throw "missing $f" }
+          }
+          $stamp = (Get-Content -Raw (Join-Path $t 'skills/team-frontend/.installed-version')).Trim()
+          if ($stamp -ne $version) { throw "stamp $stamp != $version" }
+          ./install.ps1 -Target $t
+          if (Test-Path (Join-Path $t '.team-front-backup')) { throw 'unexpected backup on clean re-install' }
+          Add-Content (Join-Path $t 'skills/front-template/SKILL.md') 'local edit'
+          ./install.ps1 -Target $t
+          $backup = Join-Path $t ".team-front-backup/front-template-$version/SKILL.md"
+          if (-not (Select-String -Quiet 'local edit' $backup)) { throw 'backup missing local edit' }
+          ./uninstall.ps1 -Target $t
+          foreach ($f in 'skills/team-frontend', 'skills/front-template', 'agents/front-reviewer.md', 'commands/front-setup.md') {
+            if (Test-Path (Join-Path $t $f)) { throw "not removed: $f" }
+          }

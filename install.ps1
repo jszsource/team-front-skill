@@ -1,19 +1,74 @@
-# Installs the team frontend skill, agents and command into a .claude directory.
+# Installs the team frontend skills, agents and command into a .claude directory.
 # Usage: install.ps1 [-Target <path-to-.claude>]   (default: .\.claude)
+#
+# - Writes the package version to <skill>\.installed-version.
+# - If an installed skill folder differs from the one being installed (local
+#   edits or an older version), it is backed up to
+#   <target>\.team-front-backup\<skill>-<old-version> before being replaced.
+# Keep behaviour identical to install.sh.
 param([string]$Target = ".\.claude")
 $ErrorActionPreference = "Stop"
 
 $Src = $PSScriptRoot
+$Stamp = ".installed-version"
+$Version = (Get-Content -Raw (Join-Path $Src "VERSION")).Trim()
+$BackupRoot = Join-Path $Target ".team-front-backup"
+
+# Relative path + SHA256 of every file under $Dir, excluding the version stamp.
+function Get-TreeHashes([string]$Dir) {
+    $root = (Resolve-Path $Dir).Path.TrimEnd('\', '/')
+    Get-ChildItem -Recurse -File -Force $root |
+        Where-Object { $_.Name -ne $Stamp } |
+        ForEach-Object {
+            $rel = $_.FullName.Substring($root.Length + 1).Replace('\', '/')
+            "$rel|$((Get-FileHash -Algorithm SHA256 $_.FullName).Hash)"
+        } | Sort-Object
+}
+
+function Test-SameTree([string]$A, [string]$B) {
+    return ((@(Get-TreeHashes $A) -join "`n") -eq (@(Get-TreeHashes $B) -join "`n"))
+}
+
+function Read-Stamp([string]$Path) {
+    return (Get-Content -Raw $Path).Trim()
+}
+
 foreach ($dir in "skills", "agents", "commands") {
     New-Item -ItemType Directory -Force -Path (Join-Path $Target $dir) | Out-Null
 }
 
-foreach ($skill in Get-ChildItem -Directory (Join-Path $Src "skills")) {
-    $skillDest = Join-Path $Target "skills\$($skill.Name)"
-    if (Test-Path $skillDest) { Remove-Item -Recurse -Force $skillDest }
-    Copy-Item -Recurse $skill.FullName (Join-Path $Target "skills")
+$OldVersion = "none"
+$tfDest = Join-Path $Target "skills/team-frontend"
+if (Test-Path (Join-Path $tfDest $Stamp)) {
+    $OldVersion = Read-Stamp (Join-Path $tfDest $Stamp)
+} elseif (Test-Path $tfDest) {
+    $OldVersion = "unknown"
 }
-Copy-Item (Join-Path $Src "agents\*.md") (Join-Path $Target "agents")
-Copy-Item (Join-Path $Src "commands\*.md") (Join-Path $Target "commands")
 
+foreach ($skill in Get-ChildItem -Directory (Join-Path $Src "skills")) {
+    $skillDest = Join-Path $Target "skills/$($skill.Name)"
+    if (Test-Path $skillDest) {
+        $prev = "unknown"
+        if (Test-Path (Join-Path $skillDest $Stamp)) { $prev = Read-Stamp (Join-Path $skillDest $Stamp) }
+        if (-not (Test-SameTree $skill.FullName $skillDest)) {
+            $backup = Join-Path $BackupRoot "$($skill.Name)-$prev"
+            if (Test-Path $backup) { $backup = "$backup-$(Get-Date -Format 'yyyyMMddHHmmss')" }
+            New-Item -ItemType Directory -Force -Path $BackupRoot | Out-Null
+            Copy-Item -Recurse $skillDest $backup
+            if ($prev -eq $Version) {
+                Write-Host "WARNING: local modifications in $skillDest (v$prev) - backed up to $backup"
+            } else {
+                Write-Host "WARNING: $skillDest (v$prev) differs from v$Version (older version and/or local edits) - backed up to $backup"
+            }
+        }
+        Remove-Item -Recurse -Force $skillDest
+    }
+    Copy-Item -Recurse $skill.FullName (Join-Path $Target "skills")
+    # LF line ending, no BOM: identical to install.sh output.
+    [System.IO.File]::WriteAllText((Join-Path (Resolve-Path $skillDest).Path $Stamp), "$Version`n")
+}
+Copy-Item (Join-Path $Src "agents/*.md") (Join-Path $Target "agents")
+Copy-Item (Join-Path $Src "commands/*.md") (Join-Path $Target "commands")
+
+Write-Host "team-front-skill: $OldVersion -> $Version"
 Write-Host "Installed team-frontend + front-template skills, front-reviewer/front-refactorer agents and /front-setup into $Target"

@@ -4,6 +4,25 @@ Placeholders: `__name__` (kebab), `__Name__` (Pascal), `__camel__` (camel).
 All paths are relative to `src/`. Generate only the segments the slice needs —
 an empty `lib/` or `config/` is not created.
 
+Cross-cutting rules for every template below:
+
+- **Next server code** (async Server Components, Server Actions, route
+  handlers) reads/writes through the slice's `api/*.server.ts` /
+  `*.action.ts` built on `serverFetch` (`@/shared/api/http.server`) — never
+  `http`/axios. Client code uses `http` from `@/shared/api`.
+- **i18n**: if `package.json` has `next-intl` or `react-i18next`, every
+  user-facing literal below (`'Saving…'`, `'Done'`, `'Try again'`, headings,
+  `aria-label`, `alt`, `placeholder`, toasts, zod messages) becomes `t('key')`
+  from the slice's namespace (`getTranslations` in Server Components,
+  `useTranslations`/`useTranslation` in client leaves); add the keys to the
+  default-locale messages and `// TODO` the other locales
+  (`../team-frontend/references/i18n.md`). Use logical Tailwind utilities
+  (`ms-*`, `pe-*`, `text-start`).
+- **Boolean props**: state booleans (`disabled`, `open`, `checked`,
+  `loading`, `readOnly`, `invalid`) are fine; no layout/behaviour-mode
+  booleans (`isCompact`, `withHeader`, `isAdmin`) — use a `cva` variant,
+  composition or a separate component (`../team-frontend/references/components.md`).
+
 ---
 
 ## Entity — `entities/__name__/`
@@ -11,9 +30,11 @@ an empty `lib/` or `config/` is not created.
 ```
 entities/__name__/
 ├── api/
-│   ├── __camel__.api.ts
+│   ├── __camel__.api.ts         # client (axios `http`)
 │   ├── __camel__.queries.ts
-│   └── __camel__.api.test.ts
+│   ├── __camel__.api.test.ts
+│   ├── __camel__.server.ts      # Next only — serverFetch, same zod schema
+│   └── __camel__.server.test.ts # Next only
 ├── model/
 │   └── types.ts
 ├── ui/
@@ -69,6 +90,26 @@ export const __camel__ListQuery = (page = 1) =>
 export const __camel__DetailQuery = (id: string) =>
   queryOptions({ queryKey: __camel__Keys.detail(id), queryFn: () => __camel__Api.byId(id) })
 ```
+
+```ts
+// api/__camel__.server.ts — Next only: server reads via serverFetch, never axios
+import 'server-only'
+import { serverFetch } from '@/shared/api/http.server'
+import { __Name__Schema } from '../model/types'
+
+// Per request with the user's cookies (memoized within one render).
+// Public, shareable data instead: add 'use cache' + cacheTag('__name__s') +
+// cacheLife('hours') in an async function and pass { auth: false } (nextjs.md §4).
+export const get__Name__s = (page = 1) =>
+  serverFetch(`/__name__s?page=${page}`, { schema: __Name__Schema.array() })
+
+export const get__Name__ = (id: string) =>
+  serverFetch(`/__name__s/${encodeURIComponent(id)}`, { schema: __Name__Schema })
+```
+
+Server functions are imported by path
+(`@/entities/__name__/api/__camel__.server`) from server code only; `index.ts`
+never re-exports them, so client bundles never see `server-only`.
 
 ```tsx
 // ui/__Name__Card.tsx — presentational, server-safe (no hooks)
@@ -129,6 +170,29 @@ describe('__camel__Api', () => {
 })
 ```
 
+```ts
+// api/__camel__.server.test.ts — Next only
+import { http as mswHttp, HttpResponse } from 'msw'
+import { server } from '@/shared/config/tests/msw/server'
+import { get__Name__s } from './__camel__.server'
+
+vi.mock('server-only', () => ({}))
+vi.mock('next/headers', () => ({ cookies: async () => ({ toString: () => 'sid=1' }) }))
+vi.mock('@/shared/config/env.server', () => ({ serverEnv: { API_URL: 'http://api.test' } }))
+
+it('forwards cookies and parses the list', async () => {
+  const item = { id: '1', name: 'First', createdAt: '2026-01-01T00:00:00.000Z' }
+  server.use(
+    mswHttp.get('http://api.test/__name__s', ({ request }) =>
+      request.headers.get('cookie') === 'sid=1'
+        ? HttpResponse.json([item])
+        : new HttpResponse(null, { status: 401 }),
+    ),
+  )
+  await expect(get__Name__s()).resolves.toEqual([item])
+})
+```
+
 ```tsx
 // ui/__Name__Card.test.tsx
 import { render, screen } from '@testing-library/react'
@@ -161,7 +225,7 @@ features/__name__/
 ```
 
 ```ts
-// api/use__Name__Mutation.ts
+// api/use__Name__Mutation.ts — client mutation via axios `http` (both modes)
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { http } from '@/shared/api'
 import { __entity__Keys } from '@/entities/__entity-name__'
@@ -205,8 +269,79 @@ export function __Name__Button({ id }: __Name__ButtonProps) {
 ```
 
 Form variant: `model/schema.ts` with a zod schema, `ui/__Name__Form.tsx` with
-shadcn `Form` + react-hook-form + `zodResolver`; Next forms posting to our BFF
-may use a Server Action + `useActionState` instead (see `nextjs.md` §5).
+shadcn `Form` + react-hook-form + `zodResolver`.
+
+#### Next — Server Action variant (forms posting to our backend)
+
+Files: `api/__camel__.action.ts` + `ui/__Name__Form.tsx` (replace the
+mutation hook and button). A Server Action is a **public POST endpoint**:
+it authenticates, authorises and zod-validates itself
+(`../team-frontend/references/security.md` §5).
+
+```ts
+// api/__camel__.action.ts
+'use server'
+import { z } from 'zod'
+import { updateTag } from 'next/cache'
+import { requireSession } from '@/entities/session/api/session.server'
+import { ApiError } from '@/shared/api/api-error'
+import { serverFetch } from '@/shared/api/http.server'
+
+const Input = z.object({ id: z.string().min(1) }) // TODO: real payload
+
+export type __Name__State = { ok: boolean; error?: 'forbidden' | 'invalid' | 'rejected' } | null
+
+export async function __camel__Action(_prev: __Name__State, formData: FormData): Promise<__Name__State> {
+  const session = await requireSession() // redirects to /login when signed out
+  if (!session.permissions.includes('__entity-name__:write')) return { ok: false, error: 'forbidden' } // TODO: real permission
+
+  const parsed = Input.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) return { ok: false, error: 'invalid' }
+
+  try {
+    await serverFetch('/__entity-name__s/__name__', { method: 'POST', json: parsed.data, timeoutMs: 15_000 })
+  } catch (error) {
+    if (error instanceof ApiError && error.status !== null && error.status < 500) {
+      return { ok: false, error: 'rejected' } // user-safe code, never the backend message
+    }
+    throw error // 5xx/network → error.tsx + logger
+  }
+  updateTag('__entity-name__s') // read-your-writes for cached reads tagged with it
+  return { ok: true }
+}
+```
+
+```tsx
+// ui/__Name__Form.tsx
+'use client'
+
+import { useActionState } from 'react'
+import { Button } from '@/shared/ui/button'
+import { __camel__Action } from '../api/__camel__.action'
+
+type __Name__FormProps = { id: string }
+
+export function __Name__Form({ id }: __Name__FormProps) {
+  const [state, formAction, isPending] = useActionState(__camel__Action, null)
+
+  return (
+    <form action={formAction} className="flex items-center gap-2">
+      <input type="hidden" name="id" value={id} />
+      <Button type="submit" disabled={isPending} aria-busy={isPending}>
+        {isPending ? 'Saving…' : '__Name__'}
+      </Button>
+      <span aria-live="polite" className="text-sm text-muted-foreground">
+        {state?.ok && 'Done'}
+        {state?.error && 'Something went wrong'}
+      </span>
+    </form>
+  )
+}
+```
+
+Test the action's guard paths with mocked `requireSession`/`serverFetch`
+(unauthorised → `forbidden`, bad input → `invalid`); the form is covered by
+E2E when the flow is critical (`e2e-playwright.md`).
 
 ```tsx
 // ui/__Name__Button.test.tsx
@@ -263,6 +398,7 @@ Consumers always select: `use__Name__Store((s) => s.isOpen)`.
 ```ts
 // index.ts
 export { __Name__Button } from './ui/__Name__Button'
+// Server Action variant: export { __Name__Form } from './ui/__Name__Form'
 // B: export { use__Name__Store } from './model/__camel__.store'
 ```
 
@@ -330,7 +466,8 @@ export function __Name__Error({ onRetry }: __Name__ErrorProps) {
 ```
 
 `__Name__Empty` = message + primary action; `__Name__Skeleton` = skeletons in
-the same grid as the final layout (no layout shift).
+the same grid as the final layout (no layout shift). A compact/full layout of
+the widget is a `cva` variant prop or a second widget — never `isCompact`.
 
 ```tsx
 // ui/__Name__.test.tsx — cover success, empty, error
@@ -375,11 +512,13 @@ views/__name__/
 // views/__name__/ui/__Name__View.tsx — async Server Component (container)
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query'
 import { __entity__ListQuery } from '@/entities/__entity-name__'
+import { get__Entity__s } from '@/entities/__entity-name__/api/__entity__.server'
 import { __Widget__ } from '@/widgets/__widget-name__'
 
 export async function __Name__View() {
   const qc = new QueryClient()
-  await qc.prefetchQuery(__entity__ListQuery())
+  // same queryKey as the client query, but the server queryFn uses serverFetch — never axios
+  await qc.prefetchQuery({ ...__entity__ListQuery(), queryFn: () => get__Entity__s() })
 
   return (
     <main className="container mx-auto flex flex-col gap-6 px-4 py-8">
@@ -404,9 +543,22 @@ export default function Page() {
 }
 ```
 
+No client refetching needed → skip Query: `const items = await get__Entity__s()`
+and pass plain props to a presentational component. A 401 from `serverFetch`
+→ `redirect('/login')`; no token refresh on the server.
+
 Also create `app/__name__/loading.tsx` (skeleton) and `app/__name__/error.tsx`
-(`'use client'`, `reset()` button). Dynamic segment (`[id]`): type
+(`'use client'`, generic message + `reset()` button, never `error.message`;
+reports with `logger.error(error)` in a `useEffect` keyed on `error` —
+`observability.md`). Dynamic segment (`[id]`): type
 `params: Promise<{ id: string }>` and `await params` (see `nextjs.md` §2).
+With i18n the route lives under `app/[locale]/__name__/` and calls
+`setRequestLocale(locale)`; `metadata` becomes `generateMetadata` with
+`getTranslations`.
+
+New top-level route → add its path to `e2e/specs/smoke.spec.ts` (renders +
+axe clean). Part of a critical flow (auth, checkout-like, core create/edit) →
+add or extend a journey spec (`../team-frontend/references/e2e-playwright.md`).
 
 ### React mode (TanStack Router)
 
@@ -437,7 +589,10 @@ export const Route = createFileRoute('/__name__')({
 ```
 
 Components below the view read the preloaded data with
-`useSuspenseQuery(__entity__ListQuery())` — no `useEffect` fetching.
+`useSuspenseQuery(__entity__ListQuery())` — no `useEffect` fetching. Add an
+`errorComponent` (generic message + `reset`) on routes that load data, and the
+new path to `e2e/specs/smoke.spec.ts`. With i18n, load the view's namespace in
+the `loader` (`i18n.loadNamespaces('__name__')`).
 
 ```ts
 // views/__name__/index.ts
@@ -447,6 +602,7 @@ export { __Name__View } from './ui/__Name__View'
 ---
 
 Placeholders `__entity-name__`, `__entity__` (camel), `__Entity__`,
-`__entityCamel__`, `__Widget__`, `__widget-name__` refer to the composed
+`__entityCamel__`, `__Widget__`, `__widget-name__` (and `get__Entity__s`, the
+entity's server list function) refer to the composed
 slices the user named in Step 2. If a composed slice doesn't exist yet, offer
 to generate it first (entity before feature before widget before view).

@@ -69,30 +69,55 @@ export default async function Page({ params }: Props) {
 ## 3. Data fetching on the server
 
 - Fetch in async Server Components (in `views`/`widgets`), via the entity's
-  `api/` functions (server axios instance or `fetch`).
+  server API functions (`api/*.server.ts`) built on **`serverFetch`**
+  (`shared/api/http.server.ts`, see `http-axios.md`).
+- **Never import `axios` (or the client `http` instance) in server code** —
+  RSC, Server Actions, route handlers, `proxy.ts`. Next's memoization and
+  caching only work through `fetch`.
+- Same GET `serverFetch` call twice in one render → one request (request
+  memoization). Call the function where the data is needed; don't prop-drill.
 - Parallelise: `const [a, b] = await Promise.all([getA(), getB()])`.
 - Don't await what you don't need yet; pass the promise down and `use()` it
   inside a `<Suspense>` boundary to stream.
-- Dedupe per request with `React.cache()` for non-fetch data sources.
+- Dedupe per request with `React.cache()` for non-fetch data sources (DB, SDK).
 - Slow sections: wrap in `<Suspense fallback={<Skeleton/>}>` so the shell streams.
 
 ## 4. Caching (Next 16)
 
-- `fetch` is **not cached by default**. Opt in explicitly.
+- `fetch` (and so `serverFetch`) is **not cached by default**. Opt in explicitly.
 - Cache Components (default in new 16.4 projects): mark cacheable functions or
   components with `"use cache"`, tag with `cacheTag('products')`, set
-  `cacheLife('hours')`.
-- Invalidate: `revalidateTag('products')` (stale-while-revalidate) or
+  `cacheLife('hours')`. Inside them call `serverFetch(path, { auth: false })` —
+  `cookies()` can't be read in a cached scope.
+- Without Cache Components: `serverFetch(path, { auth: false, next: { revalidate: 3600, tags: ['products'] } })`.
+- Invalidate: `revalidateTag('products', 'max')` (stale-while-revalidate) or
   `updateTag('products')` inside a Server Action for read-your-writes;
   `refresh()` to refresh the client router.
-- Never cache user-specific data in a shared cache.
+- Never cache user-specific data (anything fetched with `auth: true`) in a
+  shared cache.
+
+```ts
+// entities/product/api/product.server.ts
+import 'server-only'
+import { cacheLife, cacheTag } from 'next/cache'
+import { serverFetch } from '@/shared/api/http.server'
+import { ProductListSchema } from '../model/schema'
+
+export async function getProducts() {
+  'use cache'
+  cacheTag('products')
+  cacheLife('hours')
+  return serverFetch('/products', { auth: false, schema: ProductListSchema })
+}
+```
 
 ## 5. Mutations
 
 - Forms that post to our backend: Server Action (`"use server"`) +
-  `useActionState` for pending/error state + zod validation on the server.
+  `useActionState` for pending/error state + auth check + zod validation on
+  the server (`security.md`); the action calls the API via `serverFetch`.
 - Interactive client mutations against the external API: TanStack Query
-  `useMutation` through the axios instance (see `http-axios.md`).
+  `useMutation` through the client axios instance (see `http-axios.md`).
 - After mutation: `updateTag`/`revalidateTag` (server) or
   `queryClient.invalidateQueries` (client).
 
@@ -106,11 +131,13 @@ export default async function Page({ params }: Props) {
 // views/products/ui/ProductsView.tsx (server)
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query'
 import { productListQuery } from '@/entities/product'
+import { getProducts } from '@/entities/product/api/product.server'
 import { ProductList } from '@/widgets/product-list'
 
 export async function ProductsView() {
   const qc = new QueryClient()
-  await qc.prefetchQuery(productListQuery())
+  // same queryKey as the client, but the server queryFn uses serverFetch — not axios
+  await qc.prefetchQuery({ ...productListQuery(), queryFn: getProducts })
   return (
     <HydrationBoundary state={dehydrate(qc)}>
       <ProductList />
@@ -119,14 +146,18 @@ export async function ProductsView() {
 }
 ```
 
+Expose server API functions from the slice via a server-only entry
+(`api/*.server.ts` or `index.server.ts`); the client `index.ts` must never
+re-export them.
+
 Use Query in Next only when the client needs refetching, pagination,
 optimistic updates or polling. Static/server-only reads stay plain RSC.
 
 ## 7. Request interception — `proxy.ts`
 
 Next 16 renamed `middleware.ts` → `proxy.ts` (export `proxy`). Use it for auth
-redirects (check refresh cookie presence), locale, headers. Keep it light; no
-heavy data fetching.
+redirects (check refresh cookie presence), locale, headers and the per-request
+CSP nonce (`security.md`). Keep it light; no heavy data fetching, no axios.
 
 ## 8. Built-ins you must use
 
@@ -136,8 +167,11 @@ heavy data fetching.
 
 ## 9. Env
 
-`shared/config/env.ts` validates `process.env` with zod. Server values without
-prefix; browser values `NEXT_PUBLIC_*`. Never read `process.env` elsewhere.
+`shared/config/env.ts` validates browser-safe values with zod and exposes them
+mode-neutrally (`env.API_URL` ← `process.env.NEXT_PUBLIC_API_URL`, literal
+access so Next inlines it). Server values (no prefix, secrets, `API_URL` for
+`serverFetch`) live in `shared/config/env.server.ts` with `import 'server-only'`.
+Never read `process.env` elsewhere. Anything `NEXT_PUBLIC_*` is public.
 
 ## 10. Performance
 
@@ -152,5 +186,6 @@ prefix; browser values `NEXT_PUBLIC_*`. Never read `process.env` elsewhere.
 - Next ≤14: `params` sync, `fetch` cached by default, `middleware.ts`.
 - Next 15: async `params`, `fetch` uncached by default, `middleware.ts`.
 - Next 16: Turbopack default, `proxy.ts`, Cache Components / `"use cache"`,
-  `updateTag`, `refresh`, React Compiler stable.
+  `updateTag`, `refresh`, `revalidateTag(tag, profile)` (single-arg form
+  deprecated), React Compiler stable.
 - Upgrades: `npx @next/codemod@latest upgrade latest`.

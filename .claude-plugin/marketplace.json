@@ -1,0 +1,14 @@
+{
+  "name": "team-front",
+  "owner": {
+    "name": "Frontend Team"
+  },
+  "plugins": [
+    {
+      "name": "team-front-skill",
+      "source": "./",
+      "description": "Team frontend standards for Next.js and React: skills, review/refactor agents and the /front-setup command.",
+      "version": "1.1.0"
+    }
+  ]
+}

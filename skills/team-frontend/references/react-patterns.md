@@ -2,8 +2,9 @@
 
 ## A. Composition
 
-1. **Replace boolean props with composition.** Each boolean doubles the states
-   a component can be in.
+1. **Replace layout/behaviour-mode boolean props with composition.** Each such
+   boolean doubles the states a component can be in. State booleans
+   (`disabled`, `open`, `checked`, `loading`) are fine — see `components.md`.
 2. **Compound components with context.** Parent owns state, children
    (`Tabs.List`, `Tabs.Trigger`, `Tabs.Panel`) read it via context. Use when
    parts must share implicit state; skip for simple one-piece components.
@@ -98,12 +99,12 @@ smaller boundaries = faster interactivity.
 
 ## H. Security
 
-- Tokens: memory + httpOnly cookie (see `http-axios.md`); never localStorage.
-- `SameSite=Strict/Lax` cookies + CSRF token for cookie-auth mutations.
-- Never `dangerouslySetInnerHTML` with unsanitised input (DOMPurify if unavoidable).
-- Output encoding is React's default — don't bypass it.
-- CSP headers in `next.config` / server; Subresource Integrity for third-party scripts.
-- Redact PII in logs and error reporting.
+Full rules + reviewer checklist: `security.md`. In components specifically:
+
+- Tokens stay in memory (`http-axios.md`); never `localStorage`.
+- No `dangerouslySetInnerHTML` unless sanitised with DOMPurify; no
+  `javascript:` URLs; validate redirect targets.
+- Don't bypass React's output encoding; redact PII in logs and error reports.
 
 ## I. Performance fundamentals
 

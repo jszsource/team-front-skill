@@ -1,6 +1,7 @@
 # team-front-skill
 
 Claude Code package with the team's frontend standards for Next.js and React.
+Current version: see `VERSION` (changes in `CHANGELOG.md`).
 
 | Path | What it is |
 | --- | --- |
@@ -10,9 +11,49 @@ Claude Code package with the team's frontend standards for Next.js and React.
 | `skills/front-template/` | Skill: `/front-template` generates projects, FSD slices and components in the team format |
 | `agents/front-reviewer.md` | Subagent: read-only review against the standard |
 | `agents/front-refactorer.md` | Subagent: decomposes/refactors code to the standard, keeps tests green |
-| `commands/front-setup.md` | `/front-setup [audit-only]`: audit + set up tooling, tests, http, FSD |
+| `commands/front-setup.md` | `/front-setup [audit-only]`: audit + set up tooling, tests, CI, http, security, monitoring, FSD |
+| `.claude-plugin/` | Plugin manifest (`plugin.json`) and marketplace (`marketplace.json`) |
+| `install.*` / `uninstall.*` | Copy-based install into a `.claude/` folder, and removal |
+| `scripts/validate.mjs` | Package QA (run locally and in GitHub Actions) |
 
-## Install into a project
+### References
+
+| File | Topic |
+| --- | --- |
+| `fsd.md` | Feature-Sliced Design layers, slices, public API |
+| `components.md` | 150-line limit, decomposition, props |
+| `use-effect.md` | `useEffect` replacements |
+| `react-patterns.md` | composition, data-fetching, performance patterns |
+| `nextjs.md` | App Router, RSC, caching, Server Actions, `proxy.ts` |
+| `react-tanstack-router.md` | React (Vite) routing with TanStack Router |
+| `http-axios.md` | axios client + refresh interceptor, `serverFetch` for the Next server, env, tokens, cookies |
+| `security.md` | CSP, security headers, XSS, cookies/CSRF, Server Actions, secrets, audit |
+| `state-data.md` | TanStack Query, Zustand |
+| `ui-tailwind-shadcn.md` | Tailwind v4, shadcn/ui, accessibility |
+| `testing-vitest.md` | Vitest + Testing Library + MSW |
+| `e2e-playwright.md` | Playwright E2E + automated a11y (`@axe-core/playwright`) |
+| `observability.md` | Sentry, error boundaries, logging, Web Vitals, performance budgets |
+| `i18n.md` | next-intl (Next) / react-i18next (React), `Intl`, RTL |
+| `tooling.md` | package-manager detection, ESLint, Prettier, husky, commitlint |
+| `ci.md` | GitHub Actions template for target projects |
+| `dependency-updates.md` | version check and upgrades |
+| `refactoring-smells.md` | code smells and refactorings |
+
+## Install
+
+### Option A — Claude Code plugin (recommended)
+
+```text
+/plugin marketplace add <path-or-git-url-of-this-repo>
+/plugin install team-front-skill@team-front
+```
+
+Plugin commands and skills are namespaced, e.g. `/team-front-skill:front-setup`,
+`/team-front-skill:front-template next`. After a new version is published,
+refresh the marketplace (`/plugin marketplace update team-front`) and update the
+plugin from the `/plugin` menu.
+
+### Option B — copy into `.claude/` with the installer
 
 From the project root (where `.claude/` should live):
 
@@ -29,6 +70,27 @@ powershell -ExecutionPolicy Bypass -File C:\path\to\team-front-skill\install.ps1
 To install for all your projects instead, pass the target:
 `install.sh ~/.claude` / `install.ps1 -Target $HOME\.claude`.
 
+**Upgrades.** Re-run the installer from the new version. It writes the version
+to `skills/<skill>/.installed-version` and prints old → new. If an installed
+skill folder differs from the one being installed (local edits or an older
+version), it is first backed up to `.claude/.team-front-backup/<skill>-<old-version>`
+(a timestamp is appended if that backup already exists), then replaced. Agents
+and commands are overwritten. Re-apply any local edits from the backup by hand.
+
+**Uninstall.**
+
+```bash
+bash /path/to/team-front-skill/uninstall.sh [target-.claude-dir]
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\path\to\team-front-skill\uninstall.ps1 [-Target <dir>]
+```
+
+Removes exactly the shipped skills, agents and command; backups in
+`.team-front-backup/` are kept. Plugin installs are removed with
+`/plugin uninstall team-front-skill@team-front`.
+
 ## Use
 
 - Just work: "create a product list page", "add login with refresh token" → the
@@ -39,13 +101,31 @@ To install for all your projects instead, pass the target:
 - `/front-template project my-app next` — new Next.js (App Router) project.
 - `/front-template entity product` · `feature add-to-cart` · `widget product-list` · `view products` — FSD slice with tests.
 - `/front-template component widgets/header UserMenu` — component in the right folder.
-- `/front-setup` — audit and bring a project up to the standard.
+- `/front-setup` — audit and bring a project up to the standard (also runs the dependency version check).
 - `/front-setup audit-only` — report only.
 - "use front-reviewer to review my changes"
 - "use front-refactorer on src/widgets/product-list"
 
+With a plugin install, prefix commands with `team-front-skill:`.
+
+## Validate the package
+
+```bash
+node scripts/validate.mjs     # or: npm run validate   (Node 20+, no dependencies)
+```
+
+Checks frontmatter, cross-references, the reference index in `SKILL.md`,
+version consistency, installer/uninstaller parity and that rule text has no
+external URLs. The same check plus installer smoke tests run in GitHub Actions
+(`.github/workflows/validate.yml`).
+
 ## Changing the standard
 
 1. Edit `STANDARDS.md` (discuss in Confluence first).
-2. Update the matching file in `references/`.
-3. Bump the version line at the top of `STANDARDS.md`, re-zip, share.
+2. Update the matching file(s) in `references/` (and `front-template/templates/`
+   if generated code changes).
+3. Bump the version everywhere: `VERSION`, `.claude-plugin/plugin.json`,
+   `.claude-plugin/marketplace.json`, `package.json`, the status line of
+   `STANDARDS.md`, and add a `CHANGELOG.md` entry.
+4. Run `node scripts/validate.mjs` and fix every problem.
+5. Push; teammates update the plugin from the `/plugin` menu or re-run the installer.

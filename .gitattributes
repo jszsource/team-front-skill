@@ -1,0 +1,6 @@
+# Default: normalise text files, platform line endings in the working tree.
+* text=auto
+
+# Shell scripts must stay LF (they break with CRLF); PowerShell scripts CRLF.
+*.sh  text eol=lf
+*.ps1 text eol=crlf

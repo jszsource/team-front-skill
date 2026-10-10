@@ -5,7 +5,7 @@
 | Kind | Tool |
 | --- | --- |
 | Server data (lists, details, user profile from API) | TanStack Query (or RSC in Next) |
-| Shared client UI state (cart drawer open, wizard step, session token) | Zustand |
+| Shared client UI state (cart drawer open, wizard step, session/auth status: `user`, `status` — the token itself stays in memory in `shared/api/token.ts`) | Zustand |
 | Local component state | `useState` / `useReducer` |
 | Form state | react-hook-form + zod |
 | Filters, pagination, tabs, search | URL search params |

@@ -1,11 +1,14 @@
 # Frontend Engineering Standards
 
-> Status: **Draft v1.0** · Owner: Frontend Team · Last reviewed: 2026-10-10
+> Status: **v1.1.0** · Owner: Frontend Team · Last reviewed: 2026-10-10
 > Applies to: every Next.js and React (SPA) project owned by the team.
 > This document is the single source of truth. The `team-frontend` skill, the
 > `front-reviewer` / `front-refactorer` agents and the `/front-setup` command all
 > enforce exactly what is written here. Change the standard here first, then
-> update the skill references.
+> update the skill references. Sections: 1 Stack · 2 FSD · 3 Components ·
+> 4 useEffect · 5 Next.js · 6 HTTP · 7 State · 8 UI · 9 Smells · 10 Testing ·
+> 11 Tooling/CI · 12 Dependencies · 13 Security · 14 Observability/performance ·
+> 15 i18n · 16 Definition of Done.
 
 ---
 
@@ -18,17 +21,23 @@
 | Language           | TypeScript, `strict: true`               | TypeScript, `strict: true`          |
 | Styling            | **Tailwind CSS v4**                      | **Tailwind CSS v4**                 |
 | UI components      | **shadcn/ui** (Radix primitives)         | **shadcn/ui**                       |
-| Server state       | RSC fetch + **TanStack Query** on client | **TanStack Query**                  |
+| Server state       | RSC + `serverFetch`; **TanStack Query** on client | **TanStack Query**         |
 | Client state       | **Zustand**                              | **Zustand**                         |
-| HTTP client        | **axios** (single instance + interceptors) | **axios**                         |
+| HTTP client        | **axios** on the client; typed `fetch` wrapper `serverFetch` (`shared/api/http.server.ts`) on the server | **axios** (single instance + interceptors) |
 | Forms / validation | react-hook-form + zod                    | react-hook-form + zod               |
 | Unit tests         | **Vitest** + Testing Library + MSW       | **Vitest** + Testing Library + MSW  |
+| E2E + a11y tests   | **Playwright** + `@axe-core/playwright`  | **Playwright** + `@axe-core/playwright` |
+| Monitoring         | **Sentry** (`@sentry/nextjs`) + Web Vitals | **Sentry** (`@sentry/react`) + `web-vitals` |
+| i18n (>1 locale)   | **next-intl**                            | **react-i18next** + ICU             |
 | Lint / format      | ESLint (flat config) + Prettier          | ESLint (flat config) + Prettier     |
 | Git hooks          | husky + lint-staged + commitlint         | husky + lint-staged + commitlint    |
+| CI                 | GitHub Actions (`references/ci.md`)      | GitHub Actions (`references/ci.md`) |
+| Package manager    | detected from `packageManager` / lockfile (npm, pnpm, yarn, bun) | same              |
 | Architecture       | **Feature-Sliced Design** (adapted)      | **Feature-Sliced Design**           |
 
 Rule: never introduce a second library for a concern already covered above
-(no Redux, no SWR, no fetch wrappers next to axios, no MUI/Chakra next to shadcn).
+(no Redux, no SWR, no other fetch wrappers besides `serverFetch` for Next server
+code, no MUI/Chakra next to shadcn, no second lockfile).
 
 ---
 
@@ -61,7 +70,8 @@ features/auth-by-email/
 │   ├── LoginForm.tsx
 │   └── components/        # sub-components produced by decomposition
 ├── model/         # zustand store, hooks, selectors, zod schemas, types
-├── api/           # axios calls + TanStack Query hooks / query options
+├── api/           # client calls (http/axios) + TanStack Query options/hooks;
+│                  #   Next: *.server.ts with serverFetch (never re-exported by index.ts)
 ├── lib/           # pure helpers for this slice
 ├── config/        # constants
 ├── __tests__/     # or co-located *.test.ts(x)
@@ -87,6 +97,9 @@ src/
 `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `route.ts` contain **no
 business logic** — max ~20 lines, they only read params and delegate.
 
+With i18n (§15) routes live under `app/[locale]/…` and `messages/` sits at the
+project root; the FSD layout in `src/` is unchanged.
+
 ### 2.4 FSD in React + TanStack Router
 
 `src/routes/` holds TanStack Router file routes (thin, same rule as above),
@@ -98,8 +111,8 @@ business logic** — max ~20 lines, they only read params and delegate.
 
 ### 3.1 Size and decomposition
 
-- **Hard limit: 150 lines per component file** (enforced by ESLint `max-lines`).
-  Target ≤ 100. A function component body should fit on one screen.
+- **Hard limit: 150 lines per `.tsx` file** — the whole file (imports, types,
+  helpers), blank lines/comments excluded (ESLint `max-lines`). Target ≤ 100. A function component body should fit on one screen.
 - When a component grows, decompose it. Sub-components go into a
   `components/` folder **next to the parent**:
 
@@ -123,8 +136,12 @@ widgets/product-list/ui/
 
 ### 3.2 Composition rules
 
-- No boolean props that switch behaviour (`isCompact`, `withHeader`). Use
-  composition, explicit variants (`<CompactCard/>`) or `cva` variants for style.
+- Boolean props: state/ARIA-like and native-mirroring booleans are fine
+  (`disabled`, `open`, `checked`, `required`, `loading`, `readOnly`, `invalid`).
+  No booleans that switch layout/structure or behaviour mode (`isCompact`,
+  `withHeader`, `isAdmin`) — use `cva` variants, composition or an explicit
+  variant component (`<CompactCard/>`). More than 2 behaviour booleans on one
+  component → split.
 - Compound components (`<Tabs><Tabs.List/>…`) for multi-part widgets.
 - `children` / slots over render props.
 - React 19: `ref` is a normal prop — no `forwardRef`. Use `use()` over `useContext()`.
@@ -169,42 +186,63 @@ manual `useMemo` / `useCallback` are only added when profiling shows a need.
   layout or a whole widget "just in case".
 - Push client boundaries down: pass Server Components as `children` into a
   client wrapper instead of turning the parent into a client component.
-- Data fetching happens on the server (RSC, `async` component) whenever possible.
-  Parallelise independent requests with `Promise.all`; stream slow parts with
-  `<Suspense>` + `loading.tsx`.
-- Mutations: Server Actions (`"use server"`) for form posts to our own backend-for-frontend,
-  or TanStack Query `useMutation` through axios for the external API.
-- Caching: `"use cache"` / Cache Components, `cacheTag` + `revalidateTag` /
-  `updateTag`. `fetch` is **not** cached by default — be explicit.
+- Data fetching happens on the server (RSC, `async` component) via `serverFetch`
+  (§6) whenever possible. Parallelise independent requests with `Promise.all`;
+  stream slow parts with `<Suspense>` + `loading.tsx`. Server prefetch for
+  TanStack Query overrides `queryFn` with the server function.
+- Mutations: Server Actions (`"use server"`) call the API via `serverFetch`;
+  client mutations via TanStack Query `useMutation` through axios. Every Server
+  Action authenticates, authorises and zod-validates its input (§13).
+- Caching: `"use cache"` / Cache Components, `cacheTag` + `revalidateTag(tag, 'max')`
+  (two-arg form) / `updateTag` in Server Actions. `fetch` is **not** cached by
+  default — be explicit. Never cache `auth: true` (cookie-forwarding) responses
+  in a shared cache.
 - `params` and `searchParams` are **async** — always `await` them.
 - Request interception lives in `proxy.ts` (formerly `middleware.ts`).
 - Use `next/image`, `next/font`, `next/link`, `next/dynamic` for heavy client-only parts.
 - Metadata via `generateMetadata` / `metadata` export, never manual `<head>`.
-- Every route segment with data has `loading.tsx` and `error.tsx`.
-- Env vars: server-only by default; `NEXT_PUBLIC_` only for values safe in the browser.
-  Validate env with zod in `shared/config/env.ts`.
+- Every route segment with data has `loading.tsx` and `error.tsx`; the app has
+  `global-error.tsx`; both report errors (§14).
+- Env vars: server-only by default; `NEXT_PUBLIC_*` (and `VITE_*` in React mode)
+  are public — only values safe in the browser. Browser-safe values are exposed
+  mode-neutrally from `shared/config/env.ts` as `env.API_URL` (Next:
+  `NEXT_PUBLIC_API_URL`, Vite: `VITE_API_URL`). Next server values/secrets live
+  in `shared/config/env.server.ts` with `import 'server-only'` (`serverEnv.API_URL`).
+  Validate both with zod; `process.env` is read only in `shared/config/env*.ts`.
 - `server-only` package import in any module that must never reach the client.
 
 ---
 
-## 6. HTTP — axios
+## 6. HTTP — axios (client) + `serverFetch` (Next server)
 
-- Exactly one configured instance: `shared/api/http.ts`. Feature code never
-  imports `axios` directly.
+Details and templates: `references/http-axios.md`.
+
+- Exactly one configured axios instance: `shared/api/http.ts`, used **only in
+  browser code**. Feature code never imports `axios` directly.
 - Request interceptor attaches `Authorization: Bearer <accessToken>`.
 - Response interceptor handles **401 → refresh token → retry**:
   - single-flight: only one refresh request at a time; concurrent 401s wait in a queue;
   - the refresh request itself is excluded from the interceptor (no infinite loop);
   - a request is retried at most once (`_retry` flag);
   - refresh failure → clear session, reject all queued requests, redirect to login.
-- Token storage: **access token in memory** (Zustand, not persisted), **refresh
-  token in an `httpOnly; Secure; SameSite=Strict` cookie** set by the backend.
-  Never store tokens in `localStorage`.
-- Errors are normalised into one `ApiError` type in `shared/api`.
+- Access token **in memory only** — module variable in `shared/api/token.ts`
+  (not Zustand, not persisted). The `entities/session` Zustand store mirrors
+  auth state (`user`, `status`) for the UI and never holds the token.
+- Refresh token in an `httpOnly; Secure` cookie set by the backend.
+  `SameSite=Strict` (or `Lax`) only when app and API are same-site; cross-site
+  API → BFF / route-handler proxy on the app origin (preferred) or
+  `SameSite=None; Secure` + CSRF token. Never store tokens in
+  `localStorage`/`sessionStorage`.
+- Next.js server code (RSC, Server Actions, route handlers, `proxy.ts`) uses
+  `serverFetch<T>()` from `shared/api/http.server.ts` (`'server-only'`,
+  forwards cookies via `cookies()`, `auth: false` for public/cached data,
+  optional zod schema, same `ApiError`). **axios must never be imported in
+  server code** — request memoization, `"use cache"`, `revalidate` and cache
+  tags only work with `fetch`. No token refresh on the server (401 → login).
+- Errors are normalised into one `ApiError` type in `shared/api/api-error.ts`
+  (no axios import); the axios `toApiError` mapper lives in `http.ts`.
 - API functions are typed (`(params) => Promise<Dto>`) and validated with zod at
   the boundary when the backend is not trusted.
-- In Next.js server code, use a server instance that forwards cookies from
-  `cookies()`; the refresh interceptor is client-side only.
 
 ---
 
@@ -214,7 +252,8 @@ manual `useMemo` / `useCallback` are only added when profiling shows a need.
   - Query keys via factory: `productKeys.detail(id)`.
   - Use `queryOptions()` so the same options serve `useQuery`, `prefetchQuery`
     and `ensureQueryData`.
-  - Next.js: prefetch on the server, pass with `HydrationBoundary`.
+  - Next.js: prefetch on the server (override `queryFn` with the `serverFetch`
+    function), pass with `HydrationBoundary`.
   - Mutations invalidate exact keys; optimistic updates for instant UX.
 - **Client/UI state → Zustand**, only when shared across components. Local
   state stays in `useState`.
@@ -269,7 +308,9 @@ Reviews flag these smells and apply the listed fix:
 
 ---
 
-## 10. Testing — Vitest
+## 10. Testing — Vitest + Playwright
+
+Details: `references/testing-vitest.md`, `references/e2e-playwright.md`.
 
 - Every `model/` (store, hook), `lib/` function, `api/` mapper and every
   feature/widget component has a unit test. Pure `shared/ui` wrappers of
@@ -282,44 +323,156 @@ Reviews flag these smells and apply the listed fix:
   401s → single refresh, refresh failure → logout).
 - Coverage threshold: 80 % lines for `features`, `entities`, `shared/lib`, `shared/api`.
 - Async Server Components are tested through their pure presentational part
-  plus their data functions (Vitest cannot render async RSC).
+  plus their data functions (Vitest cannot render async RSC). `serverFetch`
+  functions are tested with mocked `next/headers` + MSW.
+- **E2E:** Playwright in `e2e/` at the project root, `*.spec.ts`; Vitest
+  excludes `e2e/**`. Script `test:e2e`.
+- E2E is required for **critical flows**: auth (login / error / logout /
+  protected redirect), session refresh, checkout-like multi-step flow, core
+  create/edit/delete of the main entity, search/filter via URL, smoke of every
+  top-level route. ≤ ~20 journey specs; edge cases stay in unit tests.
+- E2E runs against the production build (`build && start` / `preview`) or
+  `E2E_BASE_URL`, with a real test backend; `page.route` only for third parties
+  (or explicitly named error-state tests). Auth via a `storageState` setup
+  project; `getByRole` locators first; no `waitForTimeout`; trace on first
+  retry, CI retries 2.
+- **Accessibility (blocking):** every top-level route passes
+  `@axe-core/playwright` (WCAG 2.x A/AA) with zero serious/critical
+  violations. Component-level `vitest-axe` is optional.
 
 ---
 
 ## 11. Tooling and Git
 
-- `husky` hooks:
+Details: `references/tooling.md`, `references/ci.md`.
+
+- **Package manager is detected** (`packageManager` field, else lockfile:
+  `package-lock.json` → npm, `pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn,
+  `bun.lock`/`bun.lockb` → bun). All commands, husky hooks and CI use it;
+  never a second lockfile. Examples in this package use npm — translate.
+- `husky` hooks (run through the detected manager):
   - `pre-commit` → `lint-staged` (eslint --fix, prettier --write on staged files)
   - `commit-msg` → `commitlint` (Conventional Commits)
-  - `pre-push` → `tsc --noEmit` + `vitest run`
-- ESLint must include: `typescript-eslint`, `react-hooks`, `jsx-a11y`,
-  `@next/eslint-plugin-next` (Next) / `@tanstack/eslint-plugin-router` (React),
-  `@tanstack/eslint-plugin-query`, `eslint-plugin-boundaries` (FSD layer rules),
-  `max-lines` (150 for `*.tsx`), `prettier` config last.
+  - `pre-push` → `typecheck` + `test` (whole repo, keep < ~1 min; E2E, build
+    and audit run in CI)
+- ESLint flat config written with `defineConfig` / `globalIgnores` from
+  `eslint/config`. Must include: `typescript-eslint`, `react-hooks`, `jsx-a11y`,
+  `@next/eslint-plugin-next` (Next) / `@tanstack/eslint-plugin-router` +
+  `eslint-plugin-react-refresh` (React), `@tanstack/eslint-plugin-query`,
+  `eslint-plugin-boundaries` (FSD layer rules), `no-restricted-imports` for
+  axios (outside `shared/api`, and in any `*.server.ts`), `max-lines` (150 for
+  `*.tsx`), `no-console` (warn, allow `warn`/`error`), `prettier` config last.
+  `lint` runs with `--max-warnings 0` in CI.
 - `package.json` scripts: `dev`, `build`, `start`, `lint`, `lint:fix`, `format`,
-  `typecheck`, `test`, `test:watch`, `test:coverage`.
-- CI runs `lint`, `typecheck`, `test:coverage`, `build`.
+  `typecheck`, `test`, `test:watch`, `test:coverage`, `test:e2e`.
+- CI (GitHub Actions, `references/ci.md`): frozen install, `lint`,
+  `typecheck`, `test:coverage`, `build`, `audit` (high, production deps),
+  Playwright E2E job (+ `size` if size-limit is used); Node from `.nvmrc`;
+  concurrency cancel-in-progress; `permissions: contents: read`.
+- Commit `.nvmrc` + `engines.node`.
 
 ---
 
 ## 12. Dependency updates
 
-- On every session the assistant checks `next`, `react`, `@tanstack/*`,
-  `zustand`, `axios`, `tailwindcss`, `vitest` against `npm view <pkg> version`.
+Details: `references/dependency-updates.md`.
+
+- The version check runs **only** on `/front-setup`, when the user asks, or
+  before a dependency-related task — at most once per session (reuse the
+  result; re-run only after the lockfile changed). Core packages: `next`,
+  `react`, `@tanstack/*`, `zustand`, `axios`, `tailwindcss`, `vitest`,
+  `typescript`, `eslint`. Use the detected package manager (`npm outdated
+  --json`, `pnpm outdated --format json`, `npm view` / `pnpm view <pkg> version`).
 - Patch/minor: propose update and run it **after confirmation**.
 - Major: summarise breaking changes, propose a migration plan (use official
-  codemods, e.g. `npx @next/codemod@latest upgrade`), wait for confirmation.
+  codemods, e.g. `npx` / `pnpm dlx` / `bunx @next/codemod@latest upgrade`),
+  wait for confirmation.
 - After every update: `lint`, `typecheck`, `test`, `build` must pass.
 
 ---
 
-## 13. Definition of Done (PR checklist)
+## 13. Security
+
+Details, templates and the reviewer checklist: `references/security.md`.
+
+- **CSP required.** Next: per-request nonce set in `proxy.ts`; React (Vite):
+  CSP header from the host (build-only `<meta>` as fallback). No
+  `'unsafe-inline'` in `script-src`.
+- Security headers set on every HTML response (HSTS, `X-Content-Type-Options`,
+  `Referrer-Policy`, `X-Frame-Options` / `frame-ancestors`, `Permissions-Policy`,
+  `Cross-Origin-Opener-Policy`); Next `poweredByHeader: false`.
+- XSS: no `dangerouslySetInnerHTML` without the DOMPurify helper
+  (`sanitizeHtml`); no `innerHTML` / `eval`; user-supplied URLs pass `safeHref`
+  (no `javascript:`); redirect targets pass `safeRedirect` (no open redirects).
+- Cookies / CSRF: rules in §6; no state changes on `GET`.
+- Every Server Action and mutating route handler authenticates, authorises and
+  zod-validates its input itself — `proxy.ts` is for redirects, not authorization.
+- Secrets only server-side (`env.server.ts`); nothing secret in
+  `NEXT_PUBLIC_*` / `VITE_*`; leaked secrets are rotated.
+- Lockfile committed, frozen install + package-manager audit (high, production
+  deps) in CI.
+- Third-party scripts: team-approved, CSP-listed, nonce or SRI, consent-gated.
+
+---
+
+## 14. Observability and performance
+
+Details: `references/observability.md`.
+
+- **Sentry:** Next `@sentry/nextjs` via `instrumentation.ts` (+ `onRequestError`)
+  and `instrumentation-client.ts`; Vite `@sentry/react` +
+  `tanstackRouterBrowserTracingIntegration`. Enabled only in production.
+- Source maps uploaded from CI only (`SENTRY_AUTH_TOKEN` exists only in CI),
+  deleted after upload, never served.
+- PII: `sendDefaultPii: false`, scrubbing in `beforeSend`, user = id only.
+- Error boundaries: Next `error.tsx` per data route group + mandatory
+  `global-error.tsx`, both report; React `errorComponent` per data route + root
+  `onUncaughtError` / `onCaughtError`.
+- No `console.log` (`no-console` warn, allow `warn`/`error`; lint
+  `--max-warnings 0`); use `shared/lib/logger`.
+- Web Vitals (Next `useReportWebVitals`, Vite `web-vitals`) are sent to our
+  same-site endpoint, with the route pattern, not raw URLs.
+- **Budgets (p75, mobile):** JS first load ≤ 170 kB gzip per route, LCP ≤ 2.5 s,
+  INP ≤ 200 ms, CLS ≤ 0.1, TTFB ≤ 800 ms. Over budget needs a PR justification
+  and a follow-up ticket. Bundle analysis: `@next/bundle-analyzer` /
+  `rollup-plugin-visualizer`; `size-limit` in CI optional (recommended for Vite).
+
+---
+
+## 15. Internationalisation
+
+Details: `references/i18n.md`.
+
+- Required when the product has more than one locale. Single-locale products
+  use no i18n library but keep strings ready: no sentence concatenation,
+  `Intl` for plurals/dates/numbers.
+- Next: **next-intl**, `app/[locale]/` segment, locale detection in `proxy.ts`,
+  messages in `messages/<locale>.json`, config in `src/shared/config/i18n/`
+  (routing, request, navigation). `getTranslations` on the server by default;
+  `useTranslations` only in leaf client components. Typed messages via `AppConfig`.
+- React: **react-i18next** + `i18next-icu`, lazy namespaces
+  (`resourcesToBackend`), namespace loaded in the route `loader`, typed via
+  `CustomTypeOptions`.
+- No hard-coded user-facing strings in `views` / `widgets` / `features`
+  (including `aria-label`, `alt`, `placeholder`, toasts and zod messages).
+- ICU plurals/selects; `Intl` for dates/numbers/currency with an explicit
+  locale; locale-aware `Link`/`redirect`; RTL-safe logical Tailwind utilities
+  (`ms-*`/`me-*`, `ps-*`/`pe-*`); CI checks key parity across locales.
+
+---
+
+## 16. Definition of Done (PR checklist)
 
 - [ ] Follows FSD layers, imports only through public APIs
-- [ ] No component file > 150 lines; decomposed parts in `components/`
+- [ ] No `.tsx` file > 150 lines; decomposed parts in `components/`
 - [ ] No unjustified `useEffect`; no unjustified `"use client"`
 - [ ] Data via RSC / TanStack Query; shared UI state via Zustand selectors
-- [ ] HTTP only through `shared/api/http.ts`
+- [ ] HTTP only through `shared/api/http.ts` (client) / `serverFetch` (Next server); no axios in server code
 - [ ] UI built with shadcn + Tailwind tokens, accessible, has loading/empty/error states
+- [ ] Security checklist in `references/security.md` passes (CSP/headers, no unsanitised HTML, Server Actions auth + zod, no secrets in public env)
 - [ ] Unit tests added/updated, all green
+- [ ] Critical flows covered by E2E; routes pass axe (no serious/critical)
+- [ ] Errors reported via Sentry/logger, no `console.log`, no PII
+- [ ] Route stays within the performance budget (§14)
+- [ ] No hard-coded user-facing strings (multi-locale products)
 - [ ] `lint`, `typecheck`, `build` pass; commit messages follow Conventional Commits
