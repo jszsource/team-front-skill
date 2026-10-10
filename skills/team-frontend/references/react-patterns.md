@@ -43,7 +43,8 @@ for tiny components.
 3. **TanStack Query for client data** (cache, dedupe, retries, refetch).
 4. **Suspense for loading states** — declarative skeletons per section.
 5. **Prefetch before navigation** — `defaultPreload: 'intent'` (TanStack Router),
-   `<Link prefetch>` (Next), `queryClient.prefetchQuery` on hover.
+   `<Link prefetch>` (Next), route `loader` + `ensureQueryData` (React Router,
+   `antd-scss-react-router` profile), `queryClient.prefetchQuery` on hover.
 6. **`React.cache()`** to dedupe server calls within one request.
 7. **Optimistic updates** — `useOptimistic` (Server Actions) or Query
    `onMutate` + rollback in `onError`.
@@ -66,7 +67,9 @@ React Compiler handles most memoisation. Focus on structure:
 7. `startTransition` / `useTransition` for non-urgent updates and navigation.
 8. `useDeferredValue` for expensive renders driven by input.
 9. Stable default props (hoist `const EMPTY: Item[] = []`).
-10. `content-visibility: auto` for long lists; virtualise (TanStack Virtual) > 200 rows.
+10. `content-visibility: auto` for long sections; virtualise (TanStack Virtual)
+    lists/tables over 100 rows (`ui-tailwind-shadcn.md`; `antd-scss-react-router`:
+    AntD `Table` with `virtual`, `ui-antd-scss.md`).
 11. Hoist static JSX.
 12. Never define components inside components.
 13. Explicit checks in conditional rendering (`> 0`, `!= null`).
@@ -93,9 +96,11 @@ smaller boundaries = faster interactivity.
 - **Error boundary** per route segment (`error.tsx`) and around risky widgets.
 - **Async boundary** = Suspense + ErrorBoundary pair around each data section.
 - **Loading state**: skeletons matching final layout; no layout shift.
-- **Retry**: Query `retry: 2` for idempotent GETs, none for mutations.
-- **Error handling**: normalised `ApiError`, user-friendly messages, toast for
-  mutations, inline for forms.
+- **Retry**: Query GETs up to 2 retries with exponential backoff (capped at
+  30 s), never on 4xx; mutations don't retry (`state-data.md`).
+- **Error handling**: normalised `ApiError`, user-friendly messages; 5xx toasted
+  once by the HTTP interceptor, 4xx/domain errors toasted by the mutation,
+  field errors inline in forms via `form.setError`.
 
 ## H. Security
 
@@ -108,6 +113,7 @@ Full rules + reviewer checklist: `security.md`. In components specifically:
 
 ## I. Performance fundamentals
 
-Code-splitting by route (automatic), `next/dynamic`/`lazy` for heavy widgets,
+Code-splitting by route (automatic), `next/dynamic`/`lazy` for heavy, rarely
+shown widgets with a skeleton fallback (`ui-tailwind-shadcn.md` / `ui-antd-scss.md`),
 debounce expensive handlers, lazy-load below-the-fold images, keep barrel
 files out of hot client paths.

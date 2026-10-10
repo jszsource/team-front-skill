@@ -6,6 +6,52 @@ The version here must match `VERSION`, `.claude-plugin/*.json`, `package.json`
 and the status line of `skills/team-frontend/STANDARDS.md` (checked by
 `node scripts/validate.mjs`).
 
+## [2.0.0] - 2026-10-10
+
+### Breaking
+
+- Prettier style is now `semi: true`, double quotes, `trailingComma: "all"`,
+  `printWidth: 100`, plugins listed explicitly (`prettier-plugin-tailwindcss`
+  only for `next` and `shadcn-tailwind-tanstack-router`). All examples in the
+  package follow it; existing projects reformat once.
+- ESLint is stricter: type-checked `typescript-eslint` on `src/**`
+  (`no-floating-promises`, `no-misused-promises`), `import/order`,
+  `unused-imports`, `consistent-type-imports`, `eqeqeq`; tsconfig adds
+  `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`.
+
+### Added
+
+- Project profiles (STANDARDS §1.1), each a fixed bundle of architecture,
+  router and UI kit: `next` (FSD + Tailwind + shadcn/ui), React
+  `shadcn-tailwind-tanstack-router` (default: FSD + TanStack Router +
+  Tailwind v4 + shadcn/ui) and React `antd-scss-react-router` (feature
+  folders + React Router v7 data mode + Ant Design v5 + SCSS modules, no
+  Tailwind: AntD `Table`, `App.useApp()` toasts, `ConfigProvider` theme
+  tokens in `shared/lib/theme.ts`, shared components in `shared/components/`
+  with `*.module.scss`), plus `legacy`. Recorded as one line in the project's
+  `CLAUDE.md` (`## Frontend profile` → `- profile: <name>`) or auto-detected;
+  there is no separate `ui:` or `router:` choice.
+- STANDARDS §2.5 feature-folder architecture; new references
+  `feature-architecture.md` (incl. FSD → feature path map), `react-router-dom.md`,
+  `ui-antd-scss.md`; `front-template` `antd-scss-react-router` templates.
+- State rules (§7): key factories only, per-endpoint cache policy documented
+  next to the keys, exponential-backoff retry, `signal` cancellation,
+  invalidation matrix, no argless `invalidateQueries()`, `createResettableStore`
+  and full reset on logout (`resetAllStores()` + `queryClient.clear()`).
+- UI rules (§8): RHF + zod form wrappers with `form.setError` for server
+  errors, virtualisation from 100 rows, `@tanstack/react-table`, `aria-label`
+  on icon-only buttons, lazy-loaded heavy parts.
+- Naming (§3.3): `{domain}.store.ts`, `{name}.schema.ts`, `query-keys.ts`,
+  named exports, `z.infer` types.
+- `/front-setup` (one profile question for a new React project, installs
+  per profile), front-reviewer and front-refactorer (antd profile: flags a
+  second UI kit such as Tailwind/shadcn/`sonner`, static `message` /
+  `notification`, global SCSS instead of modules) are profile-aware. The
+  profile is detected from the **existing structure first**; the `CLAUDE.md`
+  section only confirms it (on conflict the code wins and the mismatch is
+  reported). Projects matching neither layout are `legacy`: their layout is
+  kept, new code goes next to similar code, only non-structural rules apply.
+
 ## [1.3.0] - 2026-10-10
 
 ### Added

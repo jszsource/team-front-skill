@@ -11,20 +11,20 @@ npm i -D @tanstack/router-plugin @tanstack/router-devtools @tanstack/eslint-plug
 
 ```ts
 // vite.config.ts
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import { tanstackRouter } from '@tanstack/router-plugin/vite'
-import path from 'node:path'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import path from "node:path";
 
 export default defineConfig({
   plugins: [
-    tanstackRouter({ target: 'react', autoCodeSplitting: true }), // must be before react()
-    react({ babel: { plugins: ['babel-plugin-react-compiler'] } }),
+    tanstackRouter({ target: "react", autoCodeSplitting: true }), // must be before react()
+    react({ babel: { plugins: ["babel-plugin-react-compiler"] } }),
     tailwindcss(),
   ],
-  resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
-})
+  resolve: { alias: { "@": path.resolve(__dirname, "src") } },
+});
 ```
 
 ## Structure (FSD)
@@ -43,49 +43,49 @@ src/
 
 ```tsx
 // src/app/router.tsx
-import { createRouter } from '@tanstack/react-router'
-import { QueryClient } from '@tanstack/react-query'
-import { routeTree } from '../routeTree.gen'
-
-export const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000 } } })
+import { createRouter } from "@tanstack/react-router";
+import { queryClient } from "@/shared/api/query-client"; // defaults: state-data.md
+import { routeTree } from "../routeTree.gen";
 
 export const router = createRouter({
   routeTree,
   context: { queryClient },
-  defaultPreload: 'intent',
+  defaultPreload: "intent",
   defaultPreloadStaleTime: 0, // let Query own freshness
-})
+});
 
-declare module '@tanstack/react-router' {
-  interface Register { router: typeof router }
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
+  }
 }
 ```
 
 ```tsx
 // src/routes/__root.tsx
-import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
-import type { QueryClient } from '@tanstack/react-query'
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import type { QueryClient } from "@tanstack/react-query";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: () => <Outlet />,
-})
+});
 ```
 
 ```tsx
 // src/routes/products/$id.tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { productDetailQuery } from '@/entities/product'
-import { ProductView } from '@/views/product'
+import { createFileRoute } from "@tanstack/react-router";
+import { productDetailQuery } from "@/entities/product";
+import { ProductView } from "@/views/product";
 
-export const Route = createFileRoute('/products/$id')({
+export const Route = createFileRoute("/products/$id")({
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(productDetailQuery(params.id)),
   pendingComponent: ProductView.Skeleton,
   component: function ProductRoute() {
-    const { id } = Route.useParams()
-    return <ProductView id={id} />
+    const { id } = Route.useParams();
+    return <ProductView id={id} />;
   },
-})
+});
 ```
 
 ## Rules

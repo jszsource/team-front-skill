@@ -51,7 +51,7 @@ view (replace `switch` with a component map).
 Bad:
 
 ```tsx
-<Card compact withHeader showFooter isEditable />
+<Card compact withHeader showFooter isEditable />;
 ```
 
 Good — compound + explicit variants:

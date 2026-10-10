@@ -27,76 +27,79 @@ npm i @sentry/nextjs
 
 ```ts
 // src/shared/config/monitoring/scrub.ts — used by Next and Vite
-import type { ErrorEvent } from '@sentry/nextjs' // '@sentry/react' in Vite projects
+import type { ErrorEvent } from "@sentry/nextjs"; // '@sentry/react' in Vite projects
 
-const SECRET_KEYS = /pass(word)?|token|secret|authorization|cookie|email|phone|card|iban/i
+const SECRET_KEYS = /pass(word)?|token|secret|authorization|cookie|email|phone|card|iban/i;
 
 export function scrubEvent(event: ErrorEvent): ErrorEvent | null {
   if (event.request) {
-    delete event.request.cookies
-    delete event.request.headers
-    delete event.request.data
-    if (event.request.url) event.request.url = event.request.url.split('?')[0]
+    delete event.request.cookies;
+    delete event.request.headers;
+    delete event.request.data;
+    if (event.request.url) event.request.url = event.request.url.split("?")[0];
   }
-  if (event.user) event.user = { id: event.user.id } // id only, never email/name/IP
+  if (event.user) event.user = { id: event.user.id }; // id only, never email/name/IP
   if (event.extra) {
-    for (const key of Object.keys(event.extra)) if (SECRET_KEYS.test(key)) event.extra[key] = '[scrubbed]'
+    for (const key of Object.keys(event.extra))
+      if (SECRET_KEYS.test(key)) event.extra[key] = "[scrubbed]";
   }
-  return event
+  return event;
 }
 ```
 
 ```ts
 // src/shared/config/monitoring/sentry.ts — Next: options shared by client, server, edge
-import { env } from '@/shared/config/env'
-import { scrubEvent } from './scrub'
+import { env } from "@/shared/config/env";
+import { scrubEvent } from "./scrub";
 
 export const sentryBase = {
   dsn: env.SENTRY_DSN,
   environment: env.APP_ENV,
-  enabled: process.env.NODE_ENV === 'production',
+  enabled: process.env.NODE_ENV === "production",
   sendDefaultPii: false,
   tracesSampleRate: 0.1,
   beforeSend: scrubEvent,
-}
+};
 ```
 
 ```ts
 // instrumentation-client.ts (project root, browser)
-import * as Sentry from '@sentry/nextjs'
-import { sentryBase } from '@/shared/config/monitoring/sentry'
+import * as Sentry from "@sentry/nextjs";
+import { sentryBase } from "@/shared/config/monitoring/sentry";
 
 Sentry.init({
   ...sentryBase,
   integrations: [Sentry.replayIntegration({ maskAllText: true, blockAllMedia: true })],
   replaysSessionSampleRate: 0,
   replaysOnErrorSampleRate: 0.1, // optional; remove the integration if the product forbids replay
-})
+});
 
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
 ```
 
 ```ts
 // instrumentation.ts (project root, server + edge)
-import * as Sentry from '@sentry/nextjs'
-import { sentryBase } from '@/shared/config/monitoring/sentry'
+import * as Sentry from "@sentry/nextjs";
+import { sentryBase } from "@/shared/config/monitoring/sentry";
 
 export function register() {
-  if (process.env.NEXT_RUNTIME === 'nodejs' || process.env.NEXT_RUNTIME === 'edge') {
-    Sentry.init(sentryBase)
+  if (process.env.NEXT_RUNTIME === "nodejs" || process.env.NEXT_RUNTIME === "edge") {
+    Sentry.init(sentryBase);
   }
 }
 
 // Errors thrown in RSC, Server Actions, route handlers, proxy.ts
-export const onRequestError = Sentry.captureRequestError
+export const onRequestError = Sentry.captureRequestError;
 ```
 
 ```ts
 // next.config.ts
-import { withSentryConfig } from '@sentry/nextjs'
-import type { NextConfig } from 'next'
+import { withSentryConfig } from "@sentry/nextjs";
+import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = { /* … */ }
+const nextConfig: NextConfig = {
+  /* … */
+};
 
 export default withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG,
@@ -105,7 +108,7 @@ export default withSentryConfig(nextConfig, {
   silent: !process.env.CI,
   sourcemaps: { deleteSourcemapsAfterUpload: true }, // never serve .map files publicly
   widenClientFileUpload: true,
-})
+});
 ```
 
 `npx @sentry/wizard@latest -i nextjs` generates a similar setup; keep the result
@@ -119,37 +122,43 @@ external system):
 
 ```tsx
 // app/error.tsx (and nested error.tsx for sections with their own fallback)
-'use client'
-import * as Sentry from '@sentry/nextjs'
-import { useEffect } from 'react'
-import { ErrorState } from '@/shared/ui/error-state'
+"use client";
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
+import { ErrorState } from "@/shared/ui/error-state";
 
-export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
   useEffect(() => {
-    Sentry.captureException(error)
-  }, [error])
-  return <ErrorState onRetry={reset} />
+    Sentry.captureException(error);
+  }, [error]);
+  return <ErrorState onRetry={reset} />;
 }
 ```
 
 ```tsx
 // app/global-error.tsx — replaces the root layout, so it renders <html>/<body>
-'use client'
-import * as Sentry from '@sentry/nextjs'
-import NextError from 'next/error'
-import { useEffect } from 'react'
+"use client";
+import * as Sentry from "@sentry/nextjs";
+import NextError from "next/error";
+import { useEffect } from "react";
 
 export default function GlobalError({ error }: { error: Error & { digest?: string } }) {
   useEffect(() => {
-    Sentry.captureException(error)
-  }, [error])
+    Sentry.captureException(error);
+  }, [error]);
   return (
     <html lang="en">
       <body>
         <NextError statusCode={0} />
       </body>
     </html>
-  )
+  );
 }
 ```
 
@@ -166,10 +175,10 @@ npm i -D @sentry/vite-plugin
 
 ```ts
 // src/app/sentry.ts — imported first in main.tsx
-import * as Sentry from '@sentry/react'
-import { env } from '@/shared/config/env'
-import { scrubEvent } from '@/shared/config/monitoring/scrub'
-import { router } from './router'
+import * as Sentry from "@sentry/react";
+import { env } from "@/shared/config/env";
+import { scrubEvent } from "@/shared/config/monitoring/scrub";
+import { router } from "./router";
 
 Sentry.init({
   dsn: env.SENTRY_DSN,
@@ -180,20 +189,20 @@ Sentry.init({
   tracesSampleRate: 0.1,
   tracePropagationTargets: [env.API_URL], // only our API gets trace headers
   beforeSend: scrubEvent,
-})
+});
 ```
 
 ```tsx
 // src/app/main.tsx — React 19 root error hooks
-import * as Sentry from '@sentry/react'
-import { createRoot } from 'react-dom/client'
-import './sentry'
+import * as Sentry from "@sentry/react";
+import { createRoot } from "react-dom/client";
+import "./sentry";
 
-createRoot(document.getElementById('root')!, {
+createRoot(document.getElementById("root")!, {
   onUncaughtError: Sentry.reactErrorHandler(),
   onCaughtError: Sentry.reactErrorHandler(),
   onRecoverableError: Sentry.reactErrorHandler(),
-}).render(<App />)
+}).render(<App />);
 ```
 
 Route errors: `errorComponent` on every route that loads data (and a
@@ -202,10 +211,10 @@ reporting already happens through the root hooks above.
 
 ```ts
 // vite.config.ts — source maps uploaded in CI only, then deleted
-import { sentryVitePlugin } from '@sentry/vite-plugin'
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 export default defineConfig({
-  build: { sourcemap: 'hidden' },
+  build: { sourcemap: "hidden" },
   plugins: [
     // …tanstackRouter(), react(), tailwindcss()
     process.env.SENTRY_AUTH_TOKEN &&
@@ -213,10 +222,10 @@ export default defineConfig({
         org: process.env.SENTRY_ORG,
         project: process.env.SENTRY_PROJECT,
         authToken: process.env.SENTRY_AUTH_TOKEN,
-        sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
+        sourcemaps: { filesToDeleteAfterUpload: ["./dist/**/*.map"] },
       }),
   ],
-})
+});
 ```
 
 ## PII rules
@@ -236,23 +245,24 @@ export default defineConfig({
 
 ```ts
 // src/shared/lib/logger.ts
-import * as Sentry from '@sentry/nextjs' // '@sentry/react' in Vite projects
+import * as Sentry from "@sentry/nextjs"; // '@sentry/react' in Vite projects
 
-type Ctx = Record<string, string | number | boolean | null>
-const isDev = process.env.NODE_ENV !== 'production' // Vite: import.meta.env.DEV
+type Ctx = Record<string, string | number | boolean | null>;
+const isDev = process.env.NODE_ENV !== "production"; // Vite: import.meta.env.DEV
 
 export const logger = {
-  debug: (msg: string, ctx?: Ctx) => isDev && console.warn(`[debug] ${msg}`, ctx ?? ''),
-  info: (msg: string, ctx?: Ctx) => Sentry.addBreadcrumb({ level: 'info', message: msg, data: ctx }),
+  debug: (msg: string, ctx?: Ctx) => isDev && console.warn(`[debug] ${msg}`, ctx ?? ""),
+  info: (msg: string, ctx?: Ctx) =>
+    Sentry.addBreadcrumb({ level: "info", message: msg, data: ctx }),
   warn: (msg: string, ctx?: Ctx) => {
-    if (isDev) console.warn(msg, ctx ?? '')
-    Sentry.addBreadcrumb({ level: 'warning', message: msg, data: ctx })
+    if (isDev) console.warn(msg, ctx ?? "");
+    Sentry.addBreadcrumb({ level: "warning", message: msg, data: ctx });
   },
   error: (err: unknown, ctx?: Ctx) => {
-    if (isDev) console.error(err, ctx ?? '')
-    Sentry.captureException(err, { extra: ctx })
+    if (isDev) console.error(err, ctx ?? "");
+    Sentry.captureException(err, { extra: ctx });
   },
-}
+};
 ```
 
 - Context values are ids and flags, never personal data.
@@ -265,13 +275,13 @@ Next — one reporter mounted once in the root layout:
 
 ```tsx
 // src/app-layer/WebVitals.tsx
-'use client'
-import { useReportWebVitals } from 'next/web-vitals'
-import { sendVital } from '@/shared/lib/vitals'
+"use client";
+import { useReportWebVitals } from "next/web-vitals";
+import { sendVital } from "@/shared/lib/vitals";
 
 export function WebVitals() {
-  useReportWebVitals(sendVital)
-  return null
+  useReportWebVitals(sendVital);
+  return null;
 }
 ```
 
@@ -279,23 +289,23 @@ Vite:
 
 ```ts
 // src/app/vitals.ts — called once from main.tsx
-import { onCLS, onFCP, onINP, onLCP, onTTFB } from 'web-vitals'
-import { sendVital } from '@/shared/lib/vitals'
+import { onCLS, onFCP, onINP, onLCP, onTTFB } from "web-vitals";
+import { sendVital } from "@/shared/lib/vitals";
 
 export function reportWebVitals() {
-  ;[onCLS, onFCP, onINP, onLCP, onTTFB].forEach((on) => on(sendVital))
+  [onCLS, onFCP, onINP, onLCP, onTTFB].forEach((on) => on(sendVital));
 }
 ```
 
 ```ts
 // src/shared/lib/vitals.ts
-type Vital = { name: string; value: number; rating?: string; id: string; navigationType?: string }
+type Vital = { name: string; value: number; rating?: string; id: string; navigationType?: string };
 
 export function sendVital(metric: Vital) {
-  const body = JSON.stringify({ ...metric, path: location.pathname })
-  const url = '/api/vitals' // our analytics endpoint (route handler / BFF), same-site
+  const body = JSON.stringify({ ...metric, path: location.pathname });
+  const url = "/api/vitals"; // our analytics endpoint (route handler / BFF), same-site
   if (!navigator.sendBeacon?.(url, body)) {
-    void fetch(url, { method: 'POST', body, keepalive: true })
+    void fetch(url, { method: "POST", body, keepalive: true });
   }
 }
 ```
@@ -329,9 +339,9 @@ npm i -D @next/bundle-analyzer
 
 ```ts
 // next.config.ts
-import bundleAnalyzer from '@next/bundle-analyzer'
-const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })
-export default withBundleAnalyzer(nextConfig) // wrap inside withSentryConfig
+import bundleAnalyzer from "@next/bundle-analyzer";
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true" });
+export default withBundleAnalyzer(nextConfig); // wrap inside withSentryConfig
 ```
 
 `@next/bundle-analyzer` works with webpack builds: `ANALYZE=true next build --webpack`.
@@ -343,7 +353,7 @@ Vite:
 
 ```ts
 // vite.config.ts
-import { visualizer } from 'rollup-plugin-visualizer'
+import { visualizer } from "rollup-plugin-visualizer";
 // plugins: [..., process.env.ANALYZE && visualizer({ filename: 'stats.html', gzipSize: true, brotliSize: true })]
 ```
 

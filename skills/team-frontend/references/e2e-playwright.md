@@ -52,37 +52,37 @@ Name E2E files `*.spec.ts`; Vitest must exclude `e2e/**` (see `testing-vitest.md
 ## `playwright.config.ts`
 
 ```ts
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig, devices } from "@playwright/test";
 
-const isNext = true // set per project: Next → 3000, Vite preview → 4173
-const PORT = isNext ? 3000 : 4173
-const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`
-const authFile = 'e2e/.auth/user.json'
+const isNext = true; // set per project: Next → 3000, Vite preview → 4173
+const PORT = isNext ? 3000 : 4173;
+const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`;
+const authFile = "e2e/.auth/user.json";
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 2 : undefined,
-  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL,
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
   },
   projects: [
-    { name: 'setup', testMatch: /.*\.setup\.ts/ },
+    { name: "setup", testMatch: /.*\.setup\.ts/ },
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'], storageState: authFile },
-      dependencies: ['setup'],
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"], storageState: authFile },
+      dependencies: ["setup"],
     },
     {
-      name: 'mobile-webkit',
-      use: { ...devices['iPhone 14'], storageState: authFile },
-      dependencies: ['setup'],
+      name: "mobile-webkit",
+      use: { ...devices["iPhone 14"], storageState: authFile },
+      dependencies: ["setup"],
     },
   ],
   // Test the production build, not the dev server.
@@ -90,13 +90,13 @@ export default defineConfig({
     ? undefined
     : {
         command: isNext
-          ? 'npm run build && npm run start'
+          ? "npm run build && npm run start"
           : `npm run build && npm run preview -- --port ${PORT} --strictPort`,
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 180_000,
       },
-})
+});
 ```
 
 - `E2E_BASE_URL` set → run against a deployed preview/staging, no local server.
@@ -106,18 +106,18 @@ export default defineConfig({
 
 ```ts
 // e2e/auth.setup.ts
-import { expect, test as setup } from '@playwright/test'
+import { expect, test as setup } from "@playwright/test";
 
-const authFile = 'e2e/.auth/user.json'
+const authFile = "e2e/.auth/user.json";
 
-setup('authenticate', async ({ page }) => {
-  await page.goto('/login')
-  await page.getByLabel(/email/i).fill(process.env.E2E_USER_EMAIL!)
-  await page.getByLabel(/password/i).fill(process.env.E2E_USER_PASSWORD!)
-  await page.getByRole('button', { name: /sign in/i }).click()
-  await expect(page.getByRole('navigation', { name: /account/i })).toBeVisible()
-  await page.context().storageState({ path: authFile }) // httpOnly refresh cookie included
-})
+setup("authenticate", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel(/email/i).fill(process.env.E2E_USER_EMAIL!);
+  await page.getByLabel(/password/i).fill(process.env.E2E_USER_PASSWORD!);
+  await page.getByRole("button", { name: /sign in/i }).click();
+  await expect(page.getByRole("navigation", { name: /account/i })).toBeVisible();
+  await page.context().storageState({ path: authFile }); // httpOnly refresh cookie included
+});
 ```
 
 Credentials come from env / CI secrets for a **dedicated test user**; never
@@ -130,24 +130,24 @@ no inheritance trees, no generic `BasePage`.
 
 ```ts
 // e2e/pages/LoginPage.ts
-import type { Page } from '@playwright/test'
+import type { Page } from "@playwright/test";
 
 export class LoginPage {
   constructor(private readonly page: Page) {}
 
-  readonly email = () => this.page.getByLabel(/email/i)
-  readonly password = () => this.page.getByLabel(/password/i)
-  readonly submit = () => this.page.getByRole('button', { name: /sign in/i })
-  readonly error = () => this.page.getByRole('alert')
+  readonly email = () => this.page.getByLabel(/email/i);
+  readonly password = () => this.page.getByLabel(/password/i);
+  readonly submit = () => this.page.getByRole("button", { name: /sign in/i });
+  readonly error = () => this.page.getByRole("alert");
 
   async goto() {
-    await this.page.goto('/login')
+    await this.page.goto("/login");
   }
 
   async login(email: string, password: string) {
-    await this.email().fill(email)
-    await this.password().fill(password)
-    await this.submit().click()
+    await this.email().fill(email);
+    await this.password().fill(password);
+    await this.submit().click();
   }
 }
 ```
@@ -156,35 +156,41 @@ export class LoginPage {
 
 ```ts
 // e2e/a11y.ts
-import AxeBuilder from '@axe-core/playwright'
-import { expect, type Page } from '@playwright/test'
+import AxeBuilder from "@axe-core/playwright";
+import { expect, type Page } from "@playwright/test";
 
-type Options = { include?: string; exclude?: string[]; disableRules?: string[] }
+type Options = { include?: string; exclude?: string[]; disableRules?: string[] };
 
 export async function expectNoA11yViolations(page: Page, opts: Options = {}) {
-  let builder = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
-  if (opts.include) builder = builder.include(opts.include)
-  for (const sel of opts.exclude ?? []) builder = builder.exclude(sel)
-  if (opts.disableRules?.length) builder = builder.disableRules(opts.disableRules)
+  let builder = new AxeBuilder({ page }).withTags([
+    "wcag2a",
+    "wcag2aa",
+    "wcag21a",
+    "wcag21aa",
+    "wcag22aa",
+  ]);
+  if (opts.include) builder = builder.include(opts.include);
+  for (const sel of opts.exclude ?? []) builder = builder.exclude(sel);
+  if (opts.disableRules?.length) builder = builder.disableRules(opts.disableRules);
 
-  const { violations } = await builder.analyze()
-  const blocking = violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
-  const report = blocking.map((v) => `${v.impact} ${v.id}: ${v.help} (${v.nodes.length} nodes)`)
-  expect(report, 'serious/critical a11y violations').toEqual([])
+  const { violations } = await builder.analyze();
+  const blocking = violations.filter((v) => v.impact === "serious" || v.impact === "critical");
+  const report = blocking.map((v) => `${v.impact} ${v.id}: ${v.help} (${v.nodes.length} nodes)`);
+  expect(report, "serious/critical a11y violations").toEqual([]);
 }
 ```
 
 ```ts
 // e2e/fixtures.ts
-import { test as base } from '@playwright/test'
-import { LoginPage } from './pages/LoginPage'
-import { CheckoutPage } from './pages/CheckoutPage'
+import { test as base } from "@playwright/test";
+import { LoginPage } from "./pages/LoginPage";
+import { CheckoutPage } from "./pages/CheckoutPage";
 
 export const test = base.extend<{ loginPage: LoginPage; checkoutPage: CheckoutPage }>({
   loginPage: async ({ page }, use) => use(new LoginPage(page)),
   checkoutPage: async ({ page }, use) => use(new CheckoutPage(page)),
-})
-export { expect } from '@playwright/test'
+});
+export { expect } from "@playwright/test";
 ```
 
 `minor`/`moderate` violations are reported in the PR, not blocking. Every
@@ -194,44 +200,44 @@ export { expect } from '@playwright/test'
 
 ```ts
 // e2e/specs/auth.spec.ts
-import { expect, test } from '../fixtures'
-import { expectNoA11yViolations } from '../a11y'
+import { expect, test } from "../fixtures";
+import { expectNoA11yViolations } from "../a11y";
 
-test.describe('auth', () => {
-  test.use({ storageState: { cookies: [], origins: [] } })
+test.describe("auth", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
 
-  test('shows an error for a wrong password', async ({ loginPage }) => {
-    await loginPage.goto()
-    await loginPage.login('qa@example.com', 'wrong-password')
-    await expect(loginPage.error()).toContainText(/invalid/i)
-  })
+  test("shows an error for a wrong password", async ({ loginPage }) => {
+    await loginPage.goto();
+    await loginPage.login("qa@example.com", "wrong-password");
+    await expect(loginPage.error()).toContainText(/invalid/i);
+  });
 
-  test('login page is accessible', async ({ page, loginPage }) => {
-    await loginPage.goto()
-    await expectNoA11yViolations(page)
-  })
+  test("login page is accessible", async ({ page, loginPage }) => {
+    await loginPage.goto();
+    await expectNoA11yViolations(page);
+  });
 
-  test('protected route redirects to login', async ({ page }) => {
-    await page.goto('/account')
-    await expect(page).toHaveURL(/\/login/)
-  })
-})
+  test("protected route redirects to login", async ({ page }) => {
+    await page.goto("/account");
+    await expect(page).toHaveURL(/\/login/);
+  });
+});
 ```
 
 ```ts
 // e2e/specs/smoke.spec.ts
-import { expect, test } from '../fixtures'
-import { expectNoA11yViolations } from '../a11y'
+import { expect, test } from "../fixtures";
+import { expectNoA11yViolations } from "../a11y";
 
-for (const path of ['/', '/products', '/account']) {
+for (const path of ["/", "/products", "/account"]) {
   test(`${path} renders cleanly and is accessible`, async ({ page }) => {
-    const errors: string[] = []
-    page.on('console', (msg) => msg.type() === 'error' && errors.push(msg.text()))
-    await page.goto(path)
-    await expect(page.getByRole('main')).toBeVisible()
-    await expectNoA11yViolations(page)
-    expect(errors).toEqual([])
-  })
+    const errors: string[] = [];
+    page.on("console", (msg) => msg.type() === "error" && errors.push(msg.text()));
+    await page.goto(path);
+    await expect(page.getByRole("main")).toBeVisible();
+    await expectNoA11yViolations(page);
+    expect(errors).toEqual([]);
+  });
 }
 ```
 
@@ -253,10 +259,10 @@ for (const path of ['/', '/products', '/account']) {
   test: payment provider widgets, analytics, maps, captcha, email/SMS.
 
 ```ts
-await page.route('**/api.stripe.com/**', (route) =>
-  route.fulfill({ status: 200, json: { id: 'pi_test', status: 'succeeded' } }),
-)
-await page.route(/google-analytics|googletagmanager/, (route) => route.abort())
+await page.route("**/api.stripe.com/**", (route) =>
+  route.fulfill({ status: 200, json: { id: "pi_test", status: "succeeded" } }),
+);
+await page.route(/google-analytics|googletagmanager/, (route) => route.abort());
 ```
 
 - Mocking our API is allowed only to force a hard-to-reproduce state (e.g. 500

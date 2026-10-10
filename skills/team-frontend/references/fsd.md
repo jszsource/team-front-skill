@@ -47,9 +47,9 @@ Enforce with `eslint-plugin-boundaries` (config in `tooling.md`).
 
 ```ts
 // entities/product/index.ts
-export type { Product } from './model/types'
-export { productKeys, productListQuery, productDetailQuery } from './api/product.queries'
-export { ProductCard } from './ui/ProductCard'
+export type { Product } from "./model/types";
+export { productKeys, productListQuery, productDetailQuery } from "./api/product.queries";
+export { ProductCard } from "./ui/ProductCard";
 ```
 
 Export only what other layers need. Keep server-only exports out of client

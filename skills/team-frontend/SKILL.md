@@ -1,6 +1,6 @@
 ---
 name: team-frontend
-description: Team frontend standards for Next.js (App Router) and React (Vite + TanStack Router) — Feature-Sliced Design, Server Components first, ≤150-line components, minimal useEffect, axios client + serverFetch on the Next server, Zustand, TanStack Query, Tailwind + shadcn/ui, Vitest + Playwright, security, Sentry, i18n, husky/ESLint/CI. Use whenever writing, scaffolding, reviewing or refactoring frontend code in a Next.js or React project, or setting up/upgrading one.
+description: Team frontend standards for Next.js (App Router, FSD) and React SPAs (profile shadcn-tailwind-tanstack-router = FSD, or antd-scss-react-router = feature folders) — RSC first, ≤150-line components, minimal useEffect, axios client + serverFetch on the Next server, Zustand, TanStack Query, shadcn or AntD UI, Vitest + Playwright, security, Sentry, i18n, tooling/CI. Use whenever writing, scaffolding, reviewing or refactoring frontend code in a Next.js or React project, or setting up/upgrading one.
 ---
 
 # Team Frontend Standards
@@ -15,8 +15,24 @@ is local — do **not** browse external URLs to look up these rules.
 1. Read `package.json`.
    - `next` in dependencies → **Next.js mode**. Routing = Next.js App Router.
      Keep framework principles (see `references/nextjs.md`).
-   - `react` without `next` → **React mode**. Routing = TanStack Router
-     (see `references/react-tanstack-router.md`).
+   - `react` without `next` → **React mode**. Then pick the **profile**
+     (STANDARDS §1.1) — **look at the existing structure first**:
+     1. FSD layers in `src/` (`entities`, `widgets`, `views`) or
+        `@tanstack/react-router` or shadcn `components.json` →
+        `shadcn-tailwind-tanstack-router`
+        (`references/react-tanstack-router.md`, `references/ui-tailwind-shadcn.md`);
+     2. `src/features/<domain>/` + `shared/` without FSD layers, or
+        `react-router`/`react-router-dom`, `antd` → `antd-scss-react-router`
+        (`references/feature-architecture.md`, `references/react-router-dom.md`,
+        `references/ui-antd-scss.md`);
+     3. code that matches neither → `legacy`: keep its layout, put new code
+        next to similar existing code, apply only non-structural rules;
+     4. mixed signals → follow what the code uses (structure, router, UI kit),
+        apply the closest profile's other rules and report the deviation;
+     5. empty/new project → the `CLAUDE.md` `## Frontend profile` section,
+        else ask (default `shadcn-tailwind-tanstack-router`); `/front-setup` records the choice.
+     The `CLAUDE.md` section only confirms: if it contradicts the code, follow
+     the code and tell the user about the mismatch.
    - Neither → ask the user which one to scaffold.
 2. **Package manager** (`references/tooling.md` → "Package manager"):
    `packageManager` field, else the lockfile (`package-lock.json` → npm,
@@ -34,17 +50,23 @@ is local — do **not** browse external URLs to look up these rules.
 5. Note what is present: `@sentry/*` (`references/observability.md`),
    `next-intl` / `react-i18next` (`references/i18n.md` — i18n rules apply when
    the product has >1 locale), `.github/workflows/ci.yml` (`references/ci.md`).
-6. Detect FSD: does `src/` contain `shared/`, `entities/`, `features/`, … ? If
-   not and the project is new or small, adopt FSD. If it is large and legacy,
-   apply FSD to new code and propose an incremental migration — don't rewrite
-   unasked.
+6. Structure follows what already exists. Next.js and
+   `shadcn-tailwind-tanstack-router` → FSD, `antd-scss-react-router` → feature folders; a new/empty project adopts its profile's
+   layout. A `legacy` or mixed project keeps its layout: write new code where
+   similar code already lives, never move existing files unasked, and only
+   propose an incremental migration.
 
-## Step 1 — Where does the code go? (FSD)
+## Step 1 — Where does the code go?
 
-Read `references/fsd.md`. Decide the layer and slice **before** writing code:
-`shared` (business-agnostic) → `entities` (business noun) → `features` (user
-action) → `widgets` (composed block) → `views` (page) → route file (thin).
-Import only through a slice's `index.ts`. No cross-imports within one layer.
+- **FSD (Next.js, `shadcn-tailwind-tanstack-router`)** — read `references/fsd.md`. Decide the layer and
+  slice **before** writing code: `shared` (business-agnostic) → `entities`
+  (business noun) → `features` (user action) → `widgets` (composed block) →
+  `views` (page) → route file (thin). Import only through a slice's
+  `index.ts`. No cross-imports within one layer.
+- **`antd-scss-react-router`** — read `references/feature-architecture.md`. Code goes
+  into `features/<domain>/{components,hooks,lib,queries,schemas,types}` or
+  `shared/`; other features are imported only via `@/features/<domain>`.
+  Where the references show FSD paths, translate them with its path map.
 
 ## Step 2 — Write the component
 
@@ -55,15 +77,18 @@ Hard rules (details: `references/components.md`):
   Put sub-components in a `components/` folder **next to the parent file**.
 - One component per file; never declare components inside components.
 - No layout/behaviour-mode boolean props (`isCompact`, `withHeader`) — use
-  `cva` variants or composition; state booleans (`disabled`, `open`,
+  `cva` variants (`antd-scss-react-router`: typed `variant` prop + SCSS-module
+  modifiers) or composition; state booleans (`disabled`, `open`,
   `loading`…) are fine. Compound components; `children` slots.
 - **Avoid `useEffect`.** Before writing one, walk the replacement table in
   `references/use-effect.md`. Allowed only to sync with an external system,
   with a one-line comment saying which system.
 - **Next.js:** Server Component by default. Add `"use client"` only to the
   smallest leaf that needs interactivity. Never on `page.tsx`/`layout.tsx`.
-- UI: shadcn/ui primitives from `shared/ui` + Tailwind tokens. Accessibility is
-  mandatory. Details: `references/ui-tailwind-shadcn.md`.
+- UI: shadcn/ui primitives from `shared/ui` + Tailwind tokens
+  (`references/ui-tailwind-shadcn.md`); `antd-scss-react-router` → Ant Design v5 + SCSS
+  modules (`references/ui-antd-scss.md`). One UI approach per project. Accessibility is
+  mandatory.
 - Multi-locale product: no hard-coded user-facing strings (incl. `aria-label`,
   `alt`, `placeholder`, toasts); logical Tailwind utilities (`ms-*`, `pe-*`).
   `references/i18n.md`.
@@ -80,8 +105,10 @@ Hard rules (details: `references/components.md`):
   these files or the interceptor lacks single-flight refresh, create/fix them.
 - Server Actions / mutating route handlers: authenticate, authorise, zod-validate
   (`references/security.md` §5). Secrets only in `shared/config/env.server.ts`.
-- Server state: RSC + `serverFetch` (Next) or TanStack Query. Client shared
-  state: Zustand with selectors. Details: `references/state-data.md`.
+- Server state: RSC + `serverFetch` (Next) or TanStack Query with key
+  factories and a per-endpoint cache policy. Client shared state: Zustand with
+  selectors; feature stores via `createResettableStore`, all reset on logout.
+  Details: `references/state-data.md`.
 - Patterns (composition, data fetching, render optimisation, RSC):
   `references/react-patterns.md`.
 
@@ -107,8 +134,11 @@ green without running.
 | File | Read when |
 | --- | --- |
 | `references/nextjs.md` | Next.js project: routing, RSC, caching, Server Actions, proxy, navigation, route handlers, parallel/intercepting routes, cookies |
-| `references/react-tanstack-router.md` | React (non-Next) project routing |
-| `references/fsd.md` | deciding where any file goes |
+| `references/react-tanstack-router.md` | `shadcn-tailwind-tanstack-router` routing |
+| `references/react-router-dom.md` | `antd-scss-react-router` routing |
+| `references/fsd.md` | deciding where any file goes (Next.js, `shadcn-tailwind-tanstack-router`) |
+| `references/feature-architecture.md` | `antd-scss-react-router`: folders, naming, imports, FSD → feature path map |
+| `references/ui-antd-scss.md` | `antd-scss-react-router`: Ant Design v5 + SCSS modules |
 | `references/components.md` | writing/decomposing components, boolean props |
 | `references/use-effect.md` | about to write `useEffect` |
 | `references/react-patterns.md` | composition, data-fetching, performance patterns |

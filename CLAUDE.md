@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A distributable Claude Code package (Markdown content; the only code is the Node validator and the install/uninstall scripts) encoding the team's frontend standards for Next.js (App Router) and React (Vite + TanStack Router). It is installed either as a Claude Code plugin or copied into a target project's `.claude/` directory; it is not itself a frontend app.
+A distributable Claude Code package (Markdown content; the only code is the Node validator and the install/uninstall scripts) encoding the team's frontend standards for Next.js (App Router, FSD) and React SPAs in two fixed profiles: `shadcn-tailwind-tanstack-router` (FSD + TanStack Router + Tailwind v4 + shadcn/ui, default) and `antd-scss-react-router` (feature folders + React Router + Ant Design v5 + SCSS modules, no Tailwind). It is installed either as a Claude Code plugin or copied into a target project's `.claude/` directory; it is not itself a frontend app.
 
 ## Install / try it locally
 
@@ -24,9 +24,9 @@ Installers copy `skills/*/` (replacing each skill folder wholesale, after backin
 ## Architecture
 
 - `skills/team-frontend/STANDARDS.md` — **single source of truth** (§1–§16; §16 is the Definition of Done). Everything else enforces what is written here. Version/status line at the top.
-- `skills/team-frontend/SKILL.md` — auto-applied skill: Step 0 detects mode from `package.json` (`next` → Next.js, `react` only → React/TanStack Router), package manager, tooling, FSD (version check only on setup/request), then routes to the topic files via its **Reference index** (must list every file in `references/` — validator-enforced).
-- `skills/team-frontend/references/*.md` — detailed rules + code templates per topic (FSD, components, useEffect, patterns, HTTP axios + serverFetch, security, state, router, Next.js, UI, testing, E2E, observability, i18n, tooling, CI, deps, smells).
-- `skills/front-template/` — `/front-template` skill; `SKILL.md` maps arguments (`react`, `next`, `project`, `entity|feature|widget|view`, `component`) to file templates in `templates/` (`project.md`, `slices.md`, `component.md`).
+- `skills/team-frontend/SKILL.md` — auto-applied skill: Step 0 detects mode from `package.json` (`next` → Next.js, `react` only → React) and the React profile (detected from the existing structure first; the target project's one-line `CLAUDE.md` `## Frontend profile` section — `- profile: <next|shadcn-tailwind-tanstack-router|antd-scss-react-router|legacy>` — only confirms; STANDARDS §1.1), package manager, tooling, structure (version check only on setup/request), then routes to the topic files via its **Reference index** (must list every file in `references/` — validator-enforced).
+- `skills/team-frontend/references/*.md` — detailed rules + code templates per topic (FSD, feature-folder architecture + FSD→feature path map, components, useEffect, patterns, HTTP axios + serverFetch, security, state, routers (TanStack Router, React Router), Next.js, UI (shadcn, Ant Design + SCSS), testing, E2E, observability, i18n, tooling, CI, deps, smells).
+- `skills/front-template/` — `/front-template` skill; `SKILL.md` maps arguments (`react`, `react-shadcn`, `react-antd`, `next`, `project`, `entity|feature|widget|view`, `component`) to file templates in `templates/` (`project.md`, `slices.md`, `component.md` for FSD; `antd-scss-react-router.md` for the `antd-scss-react-router` profile).
 - `agents/front-reviewer.md` (read-only review) and `agents/front-refactorer.md` (edits, keeps tests green) — subagents that read STANDARDS + specific references and cite STANDARDS § numbers.
 - `commands/front-setup.md` — `/front-setup [audit-only]` slash command.
 - `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json` — plugin manifest and single-plugin marketplace (`team-front-skill@team-front`).

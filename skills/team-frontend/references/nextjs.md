@@ -16,14 +16,14 @@ some APIs below differ (see "Version notes").
 
 ```tsx
 // widgets/sidebar/ui/Sidebar.tsx  (server)
-import { Collapsible } from './components/Collapsible' // "use client"
-import { NavLinks } from './components/NavLinks'       // server
+import { Collapsible } from "./components/Collapsible"; // "use client"
+import { NavLinks } from "./components/NavLinks"; // server
 export function Sidebar() {
   return (
     <Collapsible>
       <NavLinks />
     </Collapsible>
-  )
+  );
 }
 ```
 
@@ -47,19 +47,19 @@ app/
 
 ```tsx
 // app/products/[id]/page.tsx
-import { ProductView } from '@/views/product'
-import type { Metadata } from 'next'
+import { ProductView } from "@/views/product";
+import type { Metadata } from "next";
 
-type Props = { params: Promise<{ id: string }> }
+type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params
-  return { title: `Product ${id}` }
+  const { id } = await params;
+  return { title: `Product ${id}` };
 }
 
 export default async function Page({ params }: Props) {
-  const { id } = await params
-  return <ProductView id={id} />
+  const { id } = await params;
+  return <ProductView id={id} />;
 }
 ```
 
@@ -98,16 +98,16 @@ export default async function Page({ params }: Props) {
 
 ```ts
 // entities/product/api/product.server.ts
-import 'server-only'
-import { cacheLife, cacheTag } from 'next/cache'
-import { serverFetch } from '@/shared/api/http.server'
-import { ProductListSchema } from '../model/schema'
+import "server-only";
+import { cacheLife, cacheTag } from "next/cache";
+import { serverFetch } from "@/shared/api/http.server";
+import { ProductListSchema } from "../model/schema";
 
 export async function getProducts() {
-  'use cache'
-  cacheTag('products')
-  cacheLife('hours')
-  return serverFetch('/products', { auth: false, schema: ProductListSchema })
+  "use cache";
+  cacheTag("products");
+  cacheLife("hours");
+  return serverFetch("/products", { auth: false, schema: ProductListSchema });
 }
 ```
 
@@ -143,40 +143,46 @@ export async function getProducts() {
 ```ts
 export async function createProduct(_prev: State, formData: FormData): Promise<State> {
   // …auth + zod
-  let id: string
+  let id: string;
   try {
-    ;({ id } = await serverFetch<{ id: string }>('/products', { method: 'POST', json: parsed.data }))
+    ({ id } = await serverFetch<{ id: string }>("/products", {
+      method: "POST",
+      json: parsed.data,
+    }));
   } catch (error) {
-    if (error instanceof ApiError && error.status !== null && error.status < 500) return { ok: false, error: 'rejected' }
-    throw error
+    if (error instanceof ApiError && error.status !== null && error.status < 500)
+      return { ok: false, error: "rejected" };
+    throw error;
   }
-  updateTag('products')
-  redirect(`/products/${id}`) // outside try/catch
+  updateTag("products");
+  redirect(`/products/${id}`); // outside try/catch
 }
 ```
 
 ## 6. TanStack Query in Next.js
 
 - `app-layer/providers/QueryProvider.tsx` (`"use client"`) creates the
-  `QueryClient` with `useState(() => new QueryClient(...))`, `staleTime ≥ 60s`.
+  `QueryClient` via `getQueryClient()` from `shared/api/query-client.ts`
+  (new client per server request, one cached browser client; defaults and
+  retry policy in `state-data.md`).
 - Prefetch on server, hydrate on client:
 
 ```tsx
 // views/products/ui/ProductsView.tsx (server)
-import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query'
-import { productListQuery } from '@/entities/product'
-import { getProducts } from '@/entities/product/api/product.server'
-import { ProductList } from '@/widgets/product-list'
+import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
+import { productListQuery } from "@/entities/product";
+import { getProducts } from "@/entities/product/api/product.server";
+import { ProductList } from "@/widgets/product-list";
 
 export async function ProductsView() {
-  const qc = new QueryClient()
+  const qc = new QueryClient();
   // same queryKey as the client, but the server queryFn uses serverFetch — not axios
-  await qc.prefetchQuery({ ...productListQuery(), queryFn: getProducts })
+  await qc.prefetchQuery({ ...productListQuery(), queryFn: getProducts });
   return (
     <HydrationBoundary state={dehydrate(qc)}>
       <ProductList />
     </HydrationBoundary>
-  )
+  );
 }
 ```
 
@@ -233,15 +239,15 @@ Never read `process.env` elsewhere. Anything `NEXT_PUBLIC_*` is public.
 // views/search/ui/SearchView.tsx (server)
 <Suspense fallback={<FiltersSkeleton />}>
   <ProductFilters /> {/* "use client", uses useSearchParams */}
-</Suspense>
+</Suspense>;
 ```
 
 - Update URL state by copying, never mutating:
 
 ```ts
-const params = new URLSearchParams(searchParams.toString())
-value ? params.set('sort', value) : params.delete('sort')
-router.replace(`${pathname}?${params}`, { scroll: false })
+const params = new URLSearchParams(searchParams.toString());
+value ? params.set("sort", value) : params.delete("sort");
+router.replace(`${pathname}?${params}`, { scroll: false });
 ```
 
 - Prefer `searchParams` on the page for the initial render (SEO, no Suspense
@@ -274,9 +280,9 @@ draft-mode toggles, `sitemap`/feeds.
 
 ```tsx
 const product = await getProduct(id).catch((e) => {
-  if (e instanceof ApiError && e.status === 404) notFound()
-  throw e
-})
+  if (e instanceof ApiError && e.status === 404) notFound();
+  throw e;
+});
 ```
 
 - Finite, public sets (docs, blog, locales) → `generateStaticParams` in the
@@ -310,15 +316,19 @@ app/
 
 ```ts
 // features/set-theme/api/set-theme.action.ts
-'use server'
-import { cookies } from 'next/headers'
-import { ThemeSchema } from '../model/schema'
+"use server";
+import { cookies } from "next/headers";
+import { ThemeSchema } from "../model/schema";
 
 export async function setTheme(input: unknown) {
-  const theme = ThemeSchema.parse(input)
-  ;(await cookies()).set('theme', theme, {
-    httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 365,
-  })
+  const theme = ThemeSchema.parse(input);
+  (await cookies()).set("theme", theme, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
 }
 ```
 

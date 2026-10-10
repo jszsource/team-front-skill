@@ -3,6 +3,12 @@
 🇦🇿 [Azərbaycanca oxu](README.az.md)
 
 Claude Code package with the team's frontend standards for Next.js and React.
+Next.js projects use Feature-Sliced Design + Tailwind + shadcn/ui. React SPAs
+choose one of two fixed profiles: `shadcn-tailwind-tanstack-router` (default:
+FSD + TanStack Router + Tailwind v4 + shadcn/ui) or `antd-scss-react-router`
+(feature folders + React Router + Ant Design v5 + SCSS modules, no Tailwind).
+The choice is stored as one line in the project's `CLAUDE.md`
+(`## Frontend profile` → `- profile: <name>`, STANDARDS §1.1).
 Current version: see `VERSION` (changes in `CHANGELOG.md`).
 
 | Path | What it is |
@@ -23,16 +29,19 @@ Current version: see `VERSION` (changes in `CHANGELOG.md`).
 
 | File | Topic |
 | --- | --- |
-| `fsd.md` | Feature-Sliced Design layers, slices, public API |
+| `fsd.md` | Feature-Sliced Design layers, slices, public API (Next.js, `shadcn-tailwind-tanstack-router`) |
+| `feature-architecture.md` | `antd-scss-react-router` profile: feature folders, naming, imports, FSD → feature path map |
 | `components.md` | 150-line limit, decomposition, props |
 | `use-effect.md` | `useEffect` replacements |
 | `react-patterns.md` | composition, data-fetching, performance patterns |
 | `nextjs.md` | App Router, RSC, caching, Server Actions, `proxy.ts` |
-| `react-tanstack-router.md` | React (Vite) routing with TanStack Router |
+| `react-tanstack-router.md` | `shadcn-tailwind-tanstack-router` profile routing with TanStack Router |
+| `react-router-dom.md` | `antd-scss-react-router` profile routing with React Router |
 | `http-axios.md` | axios client + refresh interceptor, `serverFetch` for the Next server, env, tokens, cookies |
 | `security.md` | CSP, security headers, XSS, cookies/CSRF, Server Actions, secrets, audit |
-| `state-data.md` | TanStack Query, Zustand |
-| `ui-tailwind-shadcn.md` | Tailwind v4, shadcn/ui, accessibility |
+| `state-data.md` | TanStack Query (key factories, cache policy, invalidation), Zustand (resettable stores, logout reset) |
+| `ui-tailwind-shadcn.md` | Next.js and `shadcn-tailwind-tanstack-router`: Tailwind v4, shadcn/ui, forms, virtualised lists, accessibility |
+| `ui-antd-scss.md` | `antd-scss-react-router`: Ant Design v5 + SCSS modules, theme tokens, `App.useApp()` toasts, AntD `Table` |
 | `testing-vitest.md` | Vitest + Testing Library + MSW |
 | `e2e-playwright.md` | Playwright E2E + automated a11y (`@axe-core/playwright`) |
 | `observability.md` | Sentry, error boundaries, logging, Web Vitals, performance budgets |
@@ -138,11 +147,13 @@ Removes exactly the shipped skills, agents and command; backups in
 
 - Just work: "create a product list page", "add login with refresh token" → the
   skill is picked up automatically.
-- `/front-template react` — in an empty folder (no `package.json`): sets up a React project (Vite + TanStack Router) right in this folder.
+- `/front-template react` — in an empty folder (no `package.json`): sets up a React project right in this folder; asks for the profile (`shadcn-tailwind-tanstack-router` by default, or `antd-scss-react-router`).
+- `/front-template react-shadcn` — `shadcn-tailwind-tanstack-router` profile (Vite + TanStack Router + FSD + Tailwind v4 + shadcn/ui).
+- `/front-template react-antd` — `antd-scss-react-router` profile (Vite + React Router + feature folders + Ant Design v5 + SCSS modules).
 - `/front-template next` — same, with the latest Next.js (App Router).
 - `/front-template project my-app react` — new React project (Vite + TanStack Router) in a new `my-app/` folder.
 - `/front-template project my-app next` — new Next.js (App Router) project.
-- `/front-template entity product` · `feature add-to-cart` · `widget product-list` · `view products` — FSD slice with tests.
+- `/front-template entity product` · `feature add-to-cart` · `widget product-list` · `view products` — FSD slice with tests. In an `antd-scss-react-router` project `feature inspections` creates a feature module.
 - `/front-template component widgets/header UserMenu` — component in the right folder.
 - `/front-setup` — audit and bring a project up to the standard (also runs the dependency version check).
 - `/front-setup audit-only` — report only.

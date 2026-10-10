@@ -3,6 +3,12 @@
 🇬🇧 [Read in English](README.md)
 
 Next.js və React üçün komandanın frontend standartlarını saxlayan Claude Code paketi.
+Next.js layihələri Feature-Sliced Design + Tailwind + shadcn/ui istifadə edir.
+React SPA iki sabit profildən birini seçir: `shadcn-tailwind-tanstack-router`
+(default: FSD + TanStack Router + Tailwind v4 + shadcn/ui) və ya
+`antd-scss-react-router` (feature qovluqları + React Router + Ant Design v5 +
+SCSS modules, Tailwind-siz). Seçim layihənin `CLAUDE.md` faylında bir sətir
+kimi saxlanılır (`## Frontend profile` → `- profile: <ad>`, STANDARDS §1.1).
 Cari versiya: `VERSION` faylına bax (dəyişikliklər `CHANGELOG.md`-dədir).
 
 | Yol | Nədir |
@@ -23,16 +29,19 @@ Cari versiya: `VERSION` faylına bax (dəyişikliklər `CHANGELOG.md`-dədir).
 
 | Fayl | Mövzu |
 | --- | --- |
-| `fsd.md` | Feature-Sliced Design: layer-lər, slice-lar, public API |
+| `fsd.md` | Feature-Sliced Design: layer-lər, slice-lar, public API (Next.js, `shadcn-tailwind-tanstack-router`) |
+| `feature-architecture.md` | `antd-scss-react-router` profili: feature qovluqları, adlandırma, importlar, FSD → feature yol xəritəsi |
 | `components.md` | 150 sətir limiti, bölmə, props |
 | `use-effect.md` | `useEffect` əvəzləri |
 | `react-patterns.md` | composition, data-fetching, performance pattern-ləri |
 | `nextjs.md` | App Router, RSC, caching, Server Actions, `proxy.ts` |
-| `react-tanstack-router.md` | TanStack Router ilə React (Vite) routing |
+| `react-tanstack-router.md` | `shadcn-tailwind-tanstack-router` profili: TanStack Router ilə routing |
+| `react-router-dom.md` | `antd-scss-react-router` profili: React Router ilə routing |
+| `ui-antd-scss.md` | `antd-scss-react-router` profili: Ant Design v5 + SCSS modules, theme token-ləri, `App.useApp()` toast-ları, AntD `Table` |
 | `http-axios.md` | axios client + refresh interceptor, Next server üçün `serverFetch`, env, token-lər, cookie-lər |
 | `security.md` | CSP, security header-lər, XSS, cookie/CSRF, Server Actions, secret-lər, audit |
 | `state-data.md` | TanStack Query, Zustand |
-| `ui-tailwind-shadcn.md` | Tailwind v4, shadcn/ui, əlçatanlıq (a11y) |
+| `ui-tailwind-shadcn.md` | Next.js və `shadcn-tailwind-tanstack-router`: Tailwind v4, shadcn/ui, əlçatanlıq (a11y) |
 | `testing-vitest.md` | Vitest + Testing Library + MSW |
 | `e2e-playwright.md` | Playwright E2E + avtomatik a11y (`@axe-core/playwright`) |
 | `observability.md` | Sentry, error boundary-lər, logging, Web Vitals, performance büdcələri |
@@ -137,11 +146,13 @@ içindəki backup-lar saxlanılır. Plugin kimi quraşdırılıbsa:
 
 - Sadəcə işlə: "create a product list page", "add login with refresh token" →
   skill avtomatik götürülür.
-- `/front-template react` — boş qovluqda (`package.json` yoxdur): elə bu qovluqda React layihəsi (Vite + TanStack Router) qurur.
+- `/front-template react` — boş qovluqda (`package.json` yoxdur): elə bu qovluqda React layihəsi qurur; profili soruşur (default `shadcn-tailwind-tanstack-router`, və ya `antd-scss-react-router`).
+- `/front-template react-shadcn` — `shadcn-tailwind-tanstack-router` profili (Vite + TanStack Router + FSD + Tailwind v4 + shadcn/ui).
+- `/front-template react-antd` — `antd-scss-react-router` profili (Vite + React Router + feature qovluqları + Ant Design v5 + SCSS modules).
 - `/front-template next` — eyni, ən son Next.js (App Router) ilə.
 - `/front-template project my-app react` — yeni `my-app/` qovluğunda yeni React layihəsi (Vite + TanStack Router).
 - `/front-template project my-app next` — yeni Next.js (App Router) layihəsi.
-- `/front-template entity product` · `feature add-to-cart` · `widget product-list` · `view products` — testləri ilə FSD slice.
+- `/front-template entity product` · `feature add-to-cart` · `widget product-list` · `view products` — testləri ilə FSD slice. `antd-scss-react-router` profilli layihədə `feature inspections` feature modulu yaradır.
 - `/front-template component widgets/header UserMenu` — komponenti düzgün qovluqda yaradır.
 - `/front-setup` — layihəni audit edir və standarta gətirir (dependency versiya yoxlamasını da edir).
 - `/front-setup audit-only` — yalnız hesabat.

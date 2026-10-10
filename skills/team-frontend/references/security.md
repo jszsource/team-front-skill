@@ -13,15 +13,15 @@ origin we didn't allow-list.
 
 ```ts
 // proxy.ts (project root, next to app/)
-import { NextResponse, type NextRequest } from 'next/server'
+import { NextResponse, type NextRequest } from "next/server";
 
 export function proxy(request: NextRequest) {
-  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
-  const isDev = process.env.NODE_ENV === 'development'
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const isDev = process.env.NODE_ENV === "development";
 
   const csp = [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? ` 'unsafe-eval'` : ''}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? ` 'unsafe-eval'` : ""}`,
     `style-src 'self' 'unsafe-inline'`, // Tailwind/Radix inline style attrs; scripts are what matter
     `img-src 'self' data: blob: https://cdn.example.com`,
     `font-src 'self'`, // next/font self-hosts
@@ -31,39 +31,41 @@ export function proxy(request: NextRequest) {
     `form-action 'self'`,
     `object-src 'none'`,
     `upgrade-insecure-requests`,
-  ].join('; ')
+  ].join("; ");
 
-  const requestHeaders = new Headers(request.headers)
-  requestHeaders.set('x-nonce', nonce) // Next applies it to its own scripts
-  requestHeaders.set('Content-Security-Policy', csp)
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce); // Next applies it to its own scripts
+  requestHeaders.set("Content-Security-Policy", csp);
 
-  const response = NextResponse.next({ request: { headers: requestHeaders } })
-  response.headers.set('Content-Security-Policy', csp)
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set("Content-Security-Policy", csp);
   // auth redirect / locale logic goes in this same function (nextjs.md §7)
-  return response
+  return response;
 }
 
 export const config = {
   matcher: [
     {
-      source: '/((?!api|_next/static|_next/image|favicon.ico).*)',
+      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
       missing: [
-        { type: 'header', key: 'next-router-prefetch' },
-        { type: 'header', key: 'purpose', value: 'prefetch' },
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
       ],
     },
   ],
-}
+};
 ```
 
 ```tsx
 // reading the nonce for a third-party <Script> (server component)
-import { headers } from 'next/headers'
-import Script from 'next/script'
+import { headers } from "next/headers";
+import Script from "next/script";
 
 export async function Analytics() {
-  const nonce = (await headers()).get('x-nonce') ?? undefined
-  return <Script src="https://analytics.example.com/a.js" strategy="afterInteractive" nonce={nonce} />
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  return (
+    <Script src="https://analytics.example.com/a.js" strategy="afterInteractive" nonce={nonce} />
+  );
 }
 ```
 
@@ -110,20 +112,20 @@ Set on every HTML response (Next: `headers()` in `next.config.ts`; Vite: host).
 ```ts
 // next.config.ts (excerpt)
 const securityHeaders = [
-  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-  { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'X-Frame-Options', value: 'DENY' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-]
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+];
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: '/(.*)', headers: securityHeaders }]
+    return [{ source: "/(.*)", headers: securityHeaders }];
   },
-}
+};
 ```
 
 ## 3. XSS
@@ -136,14 +138,14 @@ React escapes text output — the holes are the escape hatches.
 
 ```ts
 // shared/lib/sanitize.ts
-import DOMPurify from 'dompurify'
+import DOMPurify from "dompurify";
 
 export const sanitizeHtml = (dirty: string) =>
-  DOMPurify.sanitize(dirty, { USE_PROFILES: { html: true } })
+  DOMPurify.sanitize(dirty, { USE_PROFILES: { html: true } });
 ```
 
 ```tsx
-<div dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.bodyHtml) }} />
+<div dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.bodyHtml) }} />;
 ```
 
 - **No `javascript:` / `data:` URLs** from user data in `href`, `src`,
@@ -151,23 +153,23 @@ export const sanitizeHtml = (dirty: string) =>
 
 ```ts
 // shared/lib/safe-url.ts
-const ALLOWED = new Set(['http:', 'https:', 'mailto:', 'tel:'])
+const ALLOWED = new Set(["http:", "https:", "mailto:", "tel:"]);
 
 export function safeHref(input: string): string | undefined {
   try {
-    const url = new URL(input, 'https://placeholder.invalid')
-    return ALLOWED.has(url.protocol) ? input : undefined
+    const url = new URL(input, "https://placeholder.invalid");
+    return ALLOWED.has(url.protocol) ? input : undefined;
   } catch {
-    return undefined
+    return undefined;
   }
 }
 
 /** Open-redirect guard for ?next= / ?returnTo= params: same-origin paths only. */
-export function safeRedirect(target: string | null | undefined, fallback = '/'): string {
-  if (!target || !target.startsWith('/') || target.startsWith('//') || target.startsWith('/\\')) {
-    return fallback
+export function safeRedirect(target: string | null | undefined, fallback = "/"): string {
+  if (!target || !target.startsWith("/") || target.startsWith("//") || target.startsWith("/\\")) {
+    return fallback;
   }
-  return target
+  return target;
 }
 ```
 
@@ -210,26 +212,26 @@ any payload, regardless of which UI renders it.
 
 ```ts
 // features/delete-product/api/delete-product.action.ts
-'use server'
-import { z } from 'zod'
-import { updateTag } from 'next/cache'
-import { requireSession } from '@/entities/session/api/session.server'
-import { serverFetch } from '@/shared/api/http.server'
+"use server";
+import { z } from "zod";
+import { updateTag } from "next/cache";
+import { requireSession } from "@/entities/session/api/session.server";
+import { serverFetch } from "@/shared/api/http.server";
 
-const Input = z.object({ id: z.string().uuid() })
+const Input = z.object({ id: z.string().uuid() });
 
 export async function deleteProduct(_prev: unknown, formData: FormData) {
-  const session = await requireSession() // reads cookie, redirects to /login if absent
-  if (!session.permissions.includes('product:delete')) {
-    return { ok: false as const, error: 'Forbidden' }
+  const session = await requireSession(); // reads cookie, redirects to /login if absent
+  if (!session.permissions.includes("product:delete")) {
+    return { ok: false as const, error: "Forbidden" };
   }
 
-  const parsed = Input.safeParse(Object.fromEntries(formData))
-  if (!parsed.success) return { ok: false as const, error: 'Invalid input' }
+  const parsed = Input.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { ok: false as const, error: "Invalid input" };
 
-  await serverFetch(`/products/${parsed.data.id}`, { method: 'DELETE' })
-  updateTag('products')
-  return { ok: true as const }
+  await serverFetch(`/products/${parsed.data.id}`, { method: "DELETE" });
+  updateTag("products");
+  return { ok: true as const };
 }
 ```
 

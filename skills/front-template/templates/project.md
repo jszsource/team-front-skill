@@ -2,15 +2,30 @@
 
 Entry points:
 
-- `react [name]` → § A **in place** (current folder).
+- `react [name]` / `react-shadcn [name]` with profile
+  `shadcn-tailwind-tanstack-router` (default) → § A **in place** (current folder).
+- `react [name]` with profile `antd-scss-react-router`, `react-antd [name]` →
+  **`antd-scss-react-router.md`** § Project (Vite + React Router + feature
+  folders + Ant Design v5 + SCSS modules); the in-place rules below still apply.
 - `next [name]` → § B **in place** (current folder), latest Next.js.
-- `project <name> [next|react]` → § A or § B in a new sub-folder `<name>/`.
-  Framework missing → ask: **Next.js** (App Router) or **React** (Vite +
-  TanStack Router).
+- `project <name> [next|react|react-shadcn|react-antd]` → § A, § B or
+  `antd-scss-react-router.md` in a new sub-folder `<name>/`. Framework missing → ask:
+  **Next.js** (App Router), **React `shadcn-tailwind-tanstack-router`** (Vite +
+  TanStack Router + FSD + Tailwind + shadcn/ui, default) or **React
+  `antd-scss-react-router`** (Vite + React Router + feature folders + Ant Design
+  v5 + SCSS modules).
+
+Every scaffold records the profile in the project's `CLAUDE.md` under
+`## Frontend profile` — one line (STANDARDS §1.1):
+§ A → `- profile: shadcn-tailwind-tanstack-router`; § B → `- profile: next`.
 
 React projects are **always built with Vite** — never CRA, never Next for a
 React-mode request. Next projects always use `create-next-app@latest` (latest
 stable Next.js).
+
+Generated code follows the team Prettier config (`tooling.md`: semicolons,
+double quotes, trailing commas). Some code blocks below are still written
+without semicolons — run `format` after generating (the "Finish" step does).
 
 ## Before running anything — one message
 
@@ -82,11 +97,11 @@ Delete the Vite demo files (`src/App.tsx`, `src/App.css`, `src/assets/`,
 ### 2. `vite.config.ts`
 
 ```ts
-import { defineConfig, loadEnv, type Plugin } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import { tanstackRouter } from '@tanstack/router-plugin/vite'
-import path from 'node:path'
+import { defineConfig, loadEnv, type Plugin } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import path from "node:path";
 
 // Production-only CSP <meta> (dev HMR needs inline scripts). Prefer setting CSP +
 // security headers at the host/CDN — security.md §1-2; then delete this plugin.
@@ -100,32 +115,37 @@ function cspMeta(apiUrl: string): Plugin {
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
-  ].join('; ')
+  ].join("; ");
   return {
-    name: 'csp-meta',
-    apply: 'build',
+    name: "csp-meta",
+    apply: "build",
     transformIndexHtml: () => [
-      { tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: csp }, injectTo: 'head-prepend' },
+      {
+        tag: "meta",
+        attrs: { "http-equiv": "Content-Security-Policy", content: csp },
+        injectTo: "head-prepend",
+      },
     ],
-  }
+  };
 }
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd())
+  const env = loadEnv(mode, process.cwd());
   return {
     plugins: [
-      tanstackRouter({ target: 'react', autoCodeSplitting: true }), // must be before react()
-      react({ babel: { plugins: ['babel-plugin-react-compiler'] } }),
+      tanstackRouter({ target: "react", autoCodeSplitting: true }), // must be before react()
+      react({ babel: { plugins: ["babel-plugin-react-compiler"] } }),
       tailwindcss(),
-      cspMeta(env.VITE_API_URL ?? 'http://localhost:8080'),
+      cspMeta(env.VITE_API_URL ?? "http://localhost:8080"),
     ],
-    resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
-  }
-})
+    resolve: { alias: { "@": path.resolve(__dirname, "src") } },
+  };
+});
 ```
 
-`tsconfig.app.json`: `"strict": true`, `"noUncheckedIndexedAccess": true`,
-`"baseUrl": "."`, `"paths": { "@/*": ["./src/*"] }`.
+`tsconfig.app.json`: the compiler options from `tooling.md` ("TypeScript":
+`strict`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`,
+`noUncheckedIndexedAccess`, `"paths": { "@/*": ["./src/*"] }`).
 
 ### 3. Tree
 
@@ -133,7 +153,7 @@ export default defineConfig(({ mode }) => {
 <name>/
 ├── index.html                 # <div id="root">, title, <html lang="en">
 ├── vite.config.ts  vitest.config.mts  playwright.config.ts
-├── eslint.config.mjs          # React/Vite variant from tooling.md
+├── eslint.config.mjs          # React `shadcn-tailwind-tanstack-router` variant from tooling.md
 ├── .prettierrc.json  commitlint.config.mjs  components.json  .env.example  .nvmrc
 ├── .husky/{pre-commit,commit-msg,pre-push}
 ├── .github/workflows/ci.yml
@@ -151,9 +171,9 @@ export default defineConfig(({ mode }) => {
     ├── views/home/{ui/HomeView.tsx,index.ts}
     ├── widgets/  features/  entities/session/
     └── shared/
-        ├── api/{http.ts,api-error.ts,token.ts,http.test.ts,index.ts}
+        ├── api/{http.ts,api-error.ts,token.ts,query-client.ts,http.test.ts,index.ts}
         ├── config/{env.ts,tests/{setup.ts,render.tsx,msw/{server.ts,handlers.ts}}}
-        ├── lib/{cn.ts,cn.test.ts,logger.ts,safe-url.ts,safe-url.test.ts}
+        ├── lib/{cn.ts,cn.test.ts,logger.ts,safe-url.ts,safe-url.test.ts,create-resettable-store.ts}
         ├── ui/                # shadcn output
         ├── hooks/  types/
 ```
@@ -162,29 +182,29 @@ export default defineConfig(({ mode }) => {
 
 ```tsx
 // src/main.tsx
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { RouterProvider } from '@tanstack/react-router'
-import { router } from './app/router'
-import { Providers } from './app/providers'
-import './app/styles/globals.css'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { RouterProvider } from "@tanstack/react-router";
+import { router } from "./app/router";
+import { Providers } from "./app/providers";
+import "./app/styles/globals.css";
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <Providers>
       <RouterProvider router={router} />
     </Providers>
   </StrictMode>,
-)
+);
 ```
 
 ```tsx
 // src/app/providers/QueryProvider.tsx
-import { QueryClientProvider } from '@tanstack/react-query'
-import { queryClient } from '../router'
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "../router";
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
 ```
 
@@ -197,19 +217,19 @@ integration"). `__root.tsx` also renders `TanStackRouterDevtools` and
 
 ```tsx
 // src/routes/index.tsx — thin
-import { createFileRoute } from '@tanstack/react-router'
-import { HomeView } from '@/views/home'
+import { createFileRoute } from "@tanstack/react-router";
+import { HomeView } from "@/views/home";
 
-export const Route = createFileRoute('/')({ component: HomeView })
+export const Route = createFileRoute("/")({ component: HomeView });
 ```
 
 ```ts
 // src/shared/config/env.ts — browser-safe, mode-neutral (http-axios.md "Env")
-import { z } from 'zod'
+import { z } from "zod";
 
-const EnvSchema = z.object({ API_URL: z.string().url() })
+const EnvSchema = z.object({ API_URL: z.string().url() });
 
-export const env = EnvSchema.parse({ API_URL: import.meta.env.VITE_API_URL })
+export const env = EnvSchema.parse({ API_URL: import.meta.env.VITE_API_URL });
 ```
 
 `http.ts` reads `env.API_URL` in both modes. `.env.example`:
@@ -264,10 +284,10 @@ never axios (`../team-frontend/references/http-axios.md`).
     ├── widgets/  features/
     ├── entities/session/       # store (user, status) + api/session.server.ts
     └── shared/
-        ├── api/{http.ts,http.server.ts,api-error.ts,token.ts,index.ts,
+        ├── api/{http.ts,http.server.ts,api-error.ts,token.ts,query-client.ts,index.ts,
         │        http.test.ts,http.server.test.ts}
         ├── config/{env.ts,env.server.ts,tests/{setup.ts,render.tsx,msw/{server.ts,handlers.ts}}}
-        ├── lib/{cn.ts,cn.test.ts,logger.ts,safe-url.ts,safe-url.test.ts}
+        ├── lib/{cn.ts,cn.test.ts,logger.ts,safe-url.ts,safe-url.test.ts,create-resettable-store.ts}
         ├── ui/  hooks/  types/
 ```
 
@@ -278,29 +298,28 @@ never axios (`../team-frontend/references/http-axios.md`).
 
 ```tsx
 // src/app-layer/providers/QueryProvider.tsx
-'use client'
+"use client";
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useState } from 'react'
+import { QueryClientProvider } from "@tanstack/react-query";
+
+import { getQueryClient } from "@/shared/api/query-client"; // defaults: state-data.md
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
-  const [client] = useState(
-    () => new QueryClient({ defaultOptions: { queries: { staleTime: 60_000 } } }),
-  )
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  const client = getQueryClient();
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 ```
 
 ```tsx
 // app/layout.tsx
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import { Providers } from '@/app-layer/providers'
-import '@/app-layer/styles/globals.css'
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import { Providers } from "@/app-layer/providers";
+import "@/app-layer/styles/globals.css";
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
-export const metadata: Metadata = { title: '<name>' }
+export const metadata: Metadata = { title: "<name>" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -309,27 +328,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>{children}</Providers>
       </body>
     </html>
-  )
+  );
 }
 ```
 
 ```ts
 // src/shared/config/env.ts — browser-safe; literal access so Next inlines it
-import { z } from 'zod'
+import { z } from "zod";
 
-const EnvSchema = z.object({ API_URL: z.string().url() })
+const EnvSchema = z.object({ API_URL: z.string().url() });
 
-export const env = EnvSchema.parse({ API_URL: process.env.NEXT_PUBLIC_API_URL })
+export const env = EnvSchema.parse({ API_URL: process.env.NEXT_PUBLIC_API_URL });
 ```
 
 ```ts
 // src/shared/config/env.server.ts — server values + secrets
-import 'server-only'
-import { z } from 'zod'
+import "server-only";
+import { z } from "zod";
 
 export const serverEnv = z
   .object({ API_URL: z.string().url() }) // no trailing slash
-  .parse({ API_URL: process.env.API_URL })
+  .parse({ API_URL: process.env.API_URL });
 ```
 
 `.env.example`: `NEXT_PUBLIC_API_URL=http://localhost:8080/api` and
@@ -339,50 +358,50 @@ files and in root-level runtime files (`next.config.ts`, `proxy.ts` for
 
 ```ts
 // next.config.ts — security headers (security.md §2)
-import type { NextConfig } from 'next'
+import type { NextConfig } from "next";
 
 const securityHeaders = [
-  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-  { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'X-Frame-Options', value: 'DENY' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-]
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+];
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
   poweredByHeader: false,
   async headers() {
-    return [{ source: '/(.*)', headers: securityHeaders }]
+    return [{ source: "/(.*)", headers: securityHeaders }];
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;
 // Wrapping order when added: withSentryConfig(withNextIntl(withBundleAnalyzer(nextConfig)))
 ```
 
 ```ts
 // proxy.ts — per-request CSP nonce (security.md §1) + auth redirect (nextjs.md §7)
-import { NextResponse, type NextRequest } from 'next/server'
-import { env } from '@/shared/config/env'
+import { NextResponse, type NextRequest } from "next/server";
+import { env } from "@/shared/config/env";
 
-const PROTECTED: string[] = [] // TODO: e.g. ['/account']
-const REFRESH_COOKIE = 'refresh_token' // TODO: the backend's cookie name
+const PROTECTED: string[] = []; // TODO: e.g. ['/account']
+const REFRESH_COOKIE = "refresh_token"; // TODO: the backend's cookie name
 
 export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl
+  const { pathname } = request.nextUrl;
   if (PROTECTED.some((p) => pathname.startsWith(p)) && !request.cookies.has(REFRESH_COOKIE)) {
-    const url = new URL('/login', request.url)
-    url.searchParams.set('next', pathname) // read back through safeRedirect()
-    return NextResponse.redirect(url)
+    const url = new URL("/login", request.url);
+    url.searchParams.set("next", pathname); // read back through safeRedirect()
+    return NextResponse.redirect(url);
   }
 
-  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
-  const isDev = process.env.NODE_ENV === 'development'
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const isDev = process.env.NODE_ENV === "development";
   const csp = [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? ` 'unsafe-eval'` : ''}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? ` 'unsafe-eval'` : ""}`,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob:`,
     `font-src 'self'`,
@@ -392,27 +411,27 @@ export function proxy(request: NextRequest) {
     `form-action 'self'`,
     `object-src 'none'`,
     `upgrade-insecure-requests`,
-  ].join('; ')
+  ].join("; ");
 
-  const requestHeaders = new Headers(request.headers)
-  requestHeaders.set('x-nonce', nonce)
-  requestHeaders.set('Content-Security-Policy', csp)
-  const response = NextResponse.next({ request: { headers: requestHeaders } })
-  response.headers.set('Content-Security-Policy', csp)
-  return response
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", csp);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set("Content-Security-Policy", csp);
+  return response;
 }
 
 export const config = {
   matcher: [
     {
-      source: '/((?!api|_next/static|_next/image|favicon.ico).*)',
+      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
       missing: [
-        { type: 'header', key: 'next-router-prefetch' },
-        { type: 'header', key: 'purpose', value: 'prefetch' },
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
       ],
     },
   ],
-}
+};
 ```
 
 A nonce CSP makes every matched page dynamic. Mostly-static site → ask, then
@@ -423,28 +442,28 @@ third-party scripts.
 
 ```ts
 // src/entities/session/api/session.server.ts — used by every Server Action
-import 'server-only'
-import { redirect } from 'next/navigation'
-import { z } from 'zod'
-import { ApiError } from '@/shared/api/api-error'
-import { serverFetch } from '@/shared/api/http.server'
+import "server-only";
+import { redirect } from "next/navigation";
+import { z } from "zod";
+import { ApiError } from "@/shared/api/api-error";
+import { serverFetch } from "@/shared/api/http.server";
 
-const SessionSchema = z.object({ userId: z.string(), permissions: z.array(z.string()) })
-export type Session = z.infer<typeof SessionSchema>
+const SessionSchema = z.object({ userId: z.string(), permissions: z.array(z.string()) });
+export type Session = z.infer<typeof SessionSchema>;
 
 export async function getSession(): Promise<Session | null> {
   try {
-    return await serverFetch('/auth/me', { schema: SessionSchema }) // TODO: real endpoint
+    return await serverFetch("/auth/me", { schema: SessionSchema }); // TODO: real endpoint
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401) return null
-    throw error
+    if (error instanceof ApiError && error.status === 401) return null;
+    throw error;
   }
 }
 
 export async function requireSession(): Promise<Session> {
-  const session = await getSession()
-  if (!session) redirect('/login')
-  return session
+  const session = await getSession();
+  if (!session) redirect("/login");
+  return session;
 }
 ```
 
@@ -461,10 +480,11 @@ Take these verbatim from `../team-frontend/references/`:
 
 | File(s) | Source |
 | --- | --- |
-| `shared/api/{http.ts,api-error.ts,token.ts,index.ts}` + the 5 interceptor tests; Next: `http.server.ts` + its 3 tests (MSW + mocked `next/headers`) | `http-axios.md` |
+| `shared/api/{http.ts,api-error.ts,token.ts,query-client.ts,index.ts}` + the 5 interceptor tests; Next: `http.server.ts` + its 3 tests (MSW + mocked `next/headers`) | `http-axios.md` |
 | `vitest.config.mts` (with `exclude: [...configDefaults.exclude, 'e2e/**']`), `shared/config/tests/*`, test scripts | `testing-vitest.md` |
-| `eslint.config.mjs` — **Next variant** or **React/Vite variant** (`defineConfig` + `globalIgnores`, `no-console`, `max-lines`) | `tooling.md` |
-| `.prettierrc.json` — `tailwindStylesheet`: Next `./src/app-layer/styles/globals.css`, React `./src/app/styles/globals.css` | `tooling.md` |
+| `eslint.config.mjs` — **Next variant** or **React `shadcn-tailwind-tanstack-router` variant** (`defineConfig` + `globalIgnores`, type-checked `src/` block, `import`, `unused-imports`, `no-console`, `max-lines`) | `tooling.md` |
+| `.prettierrc.json` (team config: semicolons, double quotes, `plugins: ["prettier-plugin-tailwindcss"]`) + `.prettierignore` — `tailwindStylesheet`: Next `./src/app-layer/styles/globals.css`, React `./src/app/styles/globals.css` | `tooling.md` |
+| `tsconfig` strict options (`noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`, `noUncheckedIndexedAccess`); `typecheck`: Next `tsc --noEmit`, Vite `tsc -b` | `tooling.md` |
 | husky hooks (detected runner: `npx` / `pnpm exec` / `yarn` / `bunx`), lint-staged, commitlint, scripts incl. `test:e2e` | `tooling.md` |
 | `.nvmrc` (`22`) + `"engines": { "node": ">=22" }` | `tooling.md` |
 | `.github/workflows/ci.yml` — detected-manager variant; Next adds the `.next/cache` step; `env:` gets non-secret placeholders for build-time env (Next `NEXT_PUBLIC_API_URL` + `API_URL`, Vite `VITE_API_URL` = `https://api.example.com`) | `ci.md` |
@@ -491,29 +511,39 @@ npx husky init
 
 ```ts
 // playwright.config.ts — scaffold version (no auth yet)
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 3000 // Next `start` → 3000 · Vite `preview` → 4173
-const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`
+const PORT = 3000; // Next `start` → 3000 · Vite `preview` → 4173
+const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`;
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 2 : undefined,
-  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
-  use: { baseURL, trace: 'on-first-retry', screenshot: 'only-on-failure', video: 'retain-on-failure' },
+  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
+  use: {
+    baseURL,
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
+  },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'mobile-webkit', use: { ...devices['iPhone 14'] } },
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "mobile-webkit", use: { ...devices["iPhone 14"] } },
   ],
   // Production build under test. Use the detected manager in `command`.
   // Vite: 'npm run build && npm run preview -- --port 4173 --strictPort'
   webServer: process.env.E2E_BASE_URL
     ? undefined
-    : { command: 'npm run build && npm run start', url: baseURL, reuseExistingServer: !process.env.CI, timeout: 180_000 },
-})
+    : {
+        command: "npm run build && npm run start",
+        url: baseURL,
+        reuseExistingServer: !process.env.CI,
+        timeout: 180_000,
+      },
+});
 ```
 
 When the first login flow exists, add the `setup` project + `storageState`,
@@ -521,47 +551,47 @@ When the first login flow exists, add the `setup` project + `storageState`,
 
 ```ts
 // e2e/specs/smoke.spec.ts — every top-level route: renders, no console errors, axe clean
-import { expect, test } from '@playwright/test'
-import { expectNoA11yViolations } from '../a11y'
+import { expect, test } from "@playwright/test";
+import { expectNoA11yViolations } from "../a11y";
 
-for (const path of ['/']) {
+for (const path of ["/"]) {
   test(`${path} renders cleanly and is accessible`, async ({ page }) => {
-    const errors: string[] = []
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') errors.push(msg.text())
-    })
-    await page.goto(path)
-    await expect(page.getByRole('main')).toBeVisible()
-    await expectNoA11yViolations(page)
-    expect(errors).toEqual([])
-  })
+    const errors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") errors.push(msg.text());
+    });
+    await page.goto(path);
+    await expect(page.getByRole("main")).toBeVisible();
+    await expectNoA11yViolations(page);
+    expect(errors).toEqual([]);
+  });
 }
 ```
 
 ```ts
 // src/shared/lib/logger.ts — the only logging API (no console.log elsewhere)
-type Ctx = Record<string, string | number | boolean | null>
+type Ctx = Record<string, string | number | boolean | null>;
 
-const isDev = process.env.NODE_ENV !== 'production' // Vite: import.meta.env.DEV
+const isDev = process.env.NODE_ENV !== "production"; // Vite: import.meta.env.DEV
 
 export const logger = {
   warn: (msg: string, ctx?: Ctx) => {
-    if (isDev) console.warn(msg, ctx ?? '')
+    if (isDev) console.warn(msg, ctx ?? "");
   },
   error: (err: unknown, ctx?: Ctx) => {
-    console.error(err, ctx ?? '') // replaced by Sentry.captureException when monitoring is on
+    console.error(err, ctx ?? ""); // replaced by Sentry.captureException when monitoring is on
   },
-}
+};
 ```
 
 ```ts
 // src/shared/lib/safe-url.test.ts
-import { safeHref, safeRedirect } from './safe-url'
+import { safeHref, safeRedirect } from "./safe-url";
 
-it('blocks javascript: links', () => expect(safeHref('javascript:alert(1)')).toBeUndefined())
-it('keeps https links', () => expect(safeHref('https://a.test/x')).toBe('https://a.test/x'))
-it('blocks protocol-relative redirects', () => expect(safeRedirect('//evil.test')).toBe('/'))
-it('keeps same-origin paths', () => expect(safeRedirect('/account')).toBe('/account'))
+it("blocks javascript: links", () => expect(safeHref("javascript:alert(1)")).toBeUndefined());
+it("keeps https links", () => expect(safeHref("https://a.test/x")).toBe("https://a.test/x"));
+it("blocks protocol-relative redirects", () => expect(safeRedirect("//evil.test")).toBe("/"));
+it("keeps same-origin paths", () => expect(safeRedirect("/account")).toBe("/account"));
 ```
 
 `views/home/ui/HomeView.tsx`: a `<main>` with one `h1`, a short description and
@@ -606,7 +636,7 @@ Follow `../team-frontend/references/i18n.md`:
 
 ## Finish
 
-1. With the detected manager: `lint`, `typecheck`, `test`, `build`, then
+1. With the detected manager: `format`, `lint`, `typecheck`, `test`, `build`, then
    `test:e2e` — all must pass; report real output.
 2. First commit: `chore: scaffold project from team frontend template`.
 3. Print the tree, the TODOs (API URL, refresh cookie name, protected routes,

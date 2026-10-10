@@ -1,7 +1,7 @@
 # Frontend Engineering Standards
 
-> Status: **v1.3.0** · Owner: Frontend Team · Last reviewed: 2026-10-10
-> Applies to: every Next.js and React (SPA) project owned by the team.
+> Status: **v2.0.0** · Owner: Frontend Team · Last reviewed: 2026-10-10
+> Applies to: every Next.js and React (SPA) project owned by the team (profiles: §1.1).
 > This document is the single source of truth. The `team-frontend` skill, the
 > `front-reviewer` / `front-refactorer` agents and the `/front-setup` command all
 > enforce exactly what is written here. Change the standard here first, then
@@ -14,34 +14,85 @@
 
 ## 1. Stack (non-negotiable)
 
-| Concern            | Next.js project                          | React (SPA) project                 |
-| ------------------ | ---------------------------------------- | ----------------------------------- |
-| Framework          | Next.js (latest stable, App Router)      | React 19 + Vite                     |
-| Routing            | Next.js file-system router (App Router)  | **TanStack Router** (file-based)    |
-| Language           | TypeScript, `strict: true`               | TypeScript, `strict: true`          |
-| Styling            | **Tailwind CSS v4**                      | **Tailwind CSS v4**                 |
-| UI components      | **shadcn/ui** (Radix primitives)         | **shadcn/ui**                       |
-| Server state       | RSC + `serverFetch`; **TanStack Query** on client | **TanStack Query**         |
-| Client state       | **Zustand**                              | **Zustand**                         |
-| HTTP client        | **axios** on the client; typed `fetch` wrapper `serverFetch` (`shared/api/http.server.ts`) on the server | **axios** (single instance + interceptors) |
-| Forms / validation | react-hook-form + zod                    | react-hook-form + zod               |
-| Unit tests         | **Vitest** + Testing Library + MSW       | **Vitest** + Testing Library + MSW  |
-| E2E + a11y tests   | **Playwright** + `@axe-core/playwright`  | **Playwright** + `@axe-core/playwright` |
-| Monitoring         | **Sentry** (`@sentry/nextjs`) + Web Vitals | **Sentry** (`@sentry/react`) + `web-vitals` |
-| i18n (>1 locale)   | **next-intl**                            | **react-i18next** + ICU             |
-| Lint / format      | ESLint (flat config) + Prettier          | ESLint (flat config) + Prettier     |
-| Git hooks          | husky + lint-staged + commitlint         | husky + lint-staged + commitlint    |
-| CI                 | GitHub Actions (`references/ci.md`)      | GitHub Actions (`references/ci.md`) |
-| Package manager    | detected from `packageManager` / lockfile (npm, pnpm, yarn, bun) | same              |
-| Architecture       | **Feature-Sliced Design** (adapted)      | **Feature-Sliced Design**           |
+| Concern            | Next.js project                          | React SPA — `shadcn-tailwind-tanstack-router` | React SPA — `antd-scss-react-router` |
+| ------------------ | ---------------------------------------- | ----------------------------------- | ----------------------------------- |
+| Framework          | Next.js (latest stable, App Router)      | React 19 + Vite                     | React 19 + Vite                     |
+| Routing            | Next.js file-system router (App Router)  | **TanStack Router** (file-based)    | **React Router** (data mode, `createBrowserRouter`) |
+| Architecture       | **Feature-Sliced Design** (adapted)      | **Feature-Sliced Design**           | **Feature folders** (§2.5)          |
+| Language           | TypeScript, `strict: true`               | TypeScript, `strict: true`          | TypeScript, `strict: true`          |
+| Styling / UI       | **Tailwind CSS v4** + **shadcn/ui**      | **Tailwind CSS v4** + **shadcn/ui** | **Ant Design v5** + **SCSS modules** (no Tailwind) |
+| Server state       | RSC + `serverFetch`; **TanStack Query** on client | **TanStack Query**         | **TanStack Query**                  |
+| Client state       | **Zustand**                              | **Zustand**                         | **Zustand**                         |
+| HTTP client        | **axios** on the client; typed `fetch` wrapper `serverFetch` (`shared/api/http.server.ts`) on the server | **axios** (single instance + interceptors) | **axios** (single instance + interceptors) |
+| Forms / validation | react-hook-form + zod                    | react-hook-form + zod               | react-hook-form + zod               |
+| Tables / long lists | `@tanstack/react-table` + `@tanstack/react-virtual` | same                     | AntD `Table` (`virtual` for 100+ rows) |
+| Toasts             | `sonner`                                 | `sonner`                            | AntD `App.useApp().message` / `notification` |
+| Unit tests         | **Vitest** + Testing Library + MSW       | **Vitest** + Testing Library + MSW  | **Vitest** + Testing Library + MSW  |
+| E2E + a11y tests   | **Playwright** + `@axe-core/playwright`  | **Playwright** + `@axe-core/playwright` | **Playwright** + `@axe-core/playwright` |
+| Monitoring         | **Sentry** (`@sentry/nextjs`) + Web Vitals | **Sentry** (`@sentry/react`) + `web-vitals` | **Sentry** (`@sentry/react`) + `web-vitals` |
+| i18n (>1 locale)   | **next-intl**                            | **react-i18next** + ICU             | **react-i18next** + ICU             |
+| Lint / format      | ESLint (flat config, type-checked) + Prettier | same                           | same                                |
+| Git hooks          | husky + lint-staged + commitlint         | same                                | same                                |
+| CI                 | GitHub Actions (`references/ci.md`)      | same                                | same                                |
+| Package manager    | detected from `packageManager` / lockfile (npm, pnpm, yarn, bun) | same        | same                                |
 
 Rule: never introduce a second library for a concern already covered above
 (no Redux, no SWR, no other fetch wrappers besides `serverFetch` for Next server
-code, no MUI/Chakra next to shadcn, no second lockfile).
+code, no MUI/Chakra, never two UI kits or two routers in one project, no second
+lockfile).
+
+### 1.1 Profiles
+
+Next.js projects always use FSD + Tailwind + shadcn/ui. A React SPA picks
+**one** profile when it is created and keeps it. Each profile is a fixed
+bundle — architecture, router and UI kit are never mixed across profiles:
+
+- **`shadcn-tailwind-tanstack-router`** (default) — FSD + TanStack Router + Tailwind CSS v4 +
+  shadcn/ui. For new, long-lived products.
+- **`antd-scss-react-router`** — feature folders (§2.5) + React Router + Ant Design v5 +
+  SCSS modules, no Tailwind. For enterprise/admin apps built on Ant Design and
+  teams already on React Router.
+
+The choice is recorded in the project's `CLAUDE.md` (written by `/front-setup`):
+
+```md
+## Frontend profile
+
+- profile: antd-scss-react-router   # next | shadcn-tailwind-tanstack-router | antd-scss-react-router | legacy
+```
+
+**The existing code wins.** Before writing, reviewing or refactoring, look at
+the project's real structure (`src/` folders, router and UI dependencies):
+
+| Found in the project | Profile |
+| --- | --- |
+| `next` dependency | `next` (FSD) |
+| FSD layers in `src/` (`entities`, `widgets`, `views`), `@tanstack/react-router`, shadcn `components.json` | `shadcn-tailwind-tanstack-router` |
+| `src/features/<domain>/` + `src/shared/` without FSD layers, `react-router`/`react-router-dom`, `antd` | `antd-scss-react-router` |
+| Code exists but matches neither (e.g. `src/components`, `src/pages`, `src/utils`) | `legacy` |
+| Empty / new project | the `CLAUDE.md` section if present, else ask (default `shadcn-tailwind-tanstack-router`) |
+
+- The `CLAUDE.md` section is a **record**, not an override: if it contradicts
+  the code, follow the code and report the mismatch (`/front-setup` corrects
+  the record). Never move files to make the code match the record.
+- `legacy`: keep the existing layout. New code goes next to the closest
+  existing equivalent and follows the project's own naming; all
+  non-structural rules (§3–§16) still apply. Moving to FSD or feature folders
+  is a separate, explicitly requested migration with a plan.
+- Mixed layouts or signals from both columns (e.g. feature folders with
+  shadcn): follow the structure, router and UI kit the code already uses, apply
+  the closest profile's other rules, report the deviation, don't fix it unasked.
+
+Every rule in this document applies to all profiles unless it names one.
+Rules written with FSD paths map to `antd-scss-react-router` paths via the table in
+`references/feature-architecture.md`.
 
 ---
 
-## 2. Architecture — Feature-Sliced Design (FSD)
+## 2. Architecture — Feature-Sliced Design (FSD) / feature folders
+
+Next.js and the `shadcn-tailwind-tanstack-router` profile use FSD (§2.1–2.4); the
+`antd-scss-react-router` profile uses feature folders (§2.5).
 
 ### 2.1 Layers (top may import from below, never the reverse)
 
@@ -105,6 +156,42 @@ project root; the FSD layout in `src/` is unchanged.
 `src/routes/` holds TanStack Router file routes (thin, same rule as above),
 `src/app/` holds router + providers, other layers identical.
 
+### 2.5 `antd-scss-react-router` profile — feature folders (React SPA only)
+
+Details, naming and the FSD → feature path map: `references/feature-architecture.md`.
+
+```
+src/
+  app/                      # router, providers, root layout — no business logic
+  routes/                   # route modules (thin: loader + page component)
+  features/
+    inspections/            # one business domain, kebab-case
+      components/           # UI of this domain (+ components/ sub-folders, §3.1)
+      hooks/                # domain hooks (non-query)
+      lib/
+        api.ts              # API functions (http-client, AbortSignal)
+        query-keys.ts       # query key factory
+      queries/              # useXxxQuery / useXxxMutation hooks
+      schemas/              # xxx.schema.ts (zod) + inferred types
+      types/
+      inspections.store.ts  # Zustand slice via createResettableStore (only if needed)
+      index.ts              # public API — the only import entry point
+  shared/
+    components/             # shared AntD-based components (+ *.module.scss)
+    hooks/  lib/            # http-client.ts, auth-http-client.ts, logger.ts, sanitize.ts, env.ts
+    stores/                 # auth.store.ts, create-resettable-store.ts
+    types/
+  test/                     # setup.ts, test-utils.tsx, mocks/handlers/<domain>.ts
+  styles/globals.scss       # layer order + small reset (references/ui-antd-scss.md)
+```
+
+- Every feature has `index.ts`; other code imports **only** `@/features/<domain>`
+  — no deep imports into another feature (ESLint `no-restricted-imports`).
+- A feature may import `shared/` and other features' public APIs; `shared/`
+  never imports `features/`. Circular feature imports are forbidden — move the
+  shared part to `shared/` or compose in the route.
+- Route modules stay thin (same ~20-line rule as §2.3).
+
 ---
 
 ## 3. Components
@@ -139,7 +226,8 @@ widgets/product-list/ui/
 - Boolean props: state/ARIA-like and native-mirroring booleans are fine
   (`disabled`, `open`, `checked`, `required`, `loading`, `readOnly`, `invalid`).
   No booleans that switch layout/structure or behaviour mode (`isCompact`,
-  `withHeader`, `isAdmin`) — use `cva` variants, composition or an explicit
+  `withHeader`, `isAdmin`) — use `cva` variants (`antd-scss-react-router`: a
+  typed `variant` prop + SCSS-module modifiers), composition or an explicit
   variant component (`<CompactCard/>`). More than 2 behaviour booleans on one
   component → split.
 - Compound components (`<Tabs><Tabs.List/>…`) for multi-part widgets.
@@ -150,9 +238,15 @@ widgets/product-list/ui/
 
 ### 3.3 Naming
 
-- Components `PascalCase.tsx`, hooks `useCamelCase.ts`, stores `xxx.store.ts`,
-  query hooks `useXxxQuery`, mutations `useXxxMutation`, folders `kebab-case`.
-- Props types: `type XxxProps = {…}` in the same file.
+- Components `PascalCase.tsx`, hooks `useCamelCase.ts`, stores
+  `{domain}.store.ts` (never a bare `store.ts`), zod schemas
+  `{name}.schema.ts`, query key factories `query-keys.ts`, other lib files
+  `kebab-case.ts`, query hooks `useXxxQuery`, mutations `useXxxMutation`,
+  folders `kebab-case`.
+- Props types: `export type XxxProps = {…}` in the same file; no `React.FC`.
+  Named exports everywhere except framework-required default exports (route files).
+- Types from zod via `z.infer<typeof schema>`; `any` is a lint warning and
+  needs a justification comment — prefer `unknown` + narrowing.
 
 ---
 
@@ -278,25 +372,60 @@ Details and templates: `references/http-axios.md`.
 
 ## 7. State management
 
+Details: `references/state-data.md`.
+
 - **Server data → TanStack Query.** Never copy server data into Zustand.
-  - Query keys via factory: `productKeys.detail(id)`.
+  - One `QueryClient` (`shared/api/query-client.ts` / `shared/lib/query-client.ts`),
+    provider at the root, Devtools in development only.
+  - Query keys **only** via a per-slice/per-feature factory
+    (`productKeys.all / lists() / list(filters) / details() / detail(id)`), typed
+    `as const`, deterministic — never inline arrays, never `Date.now()` /
+    `Math.random()` / whole objects with functions in a key.
   - Use `queryOptions()` so the same options serve `useQuery`, `prefetchQuery`
-    and `ensureQueryData`.
+    and `ensureQueryData`. `queryFn` receives `{ signal }` and passes it to
+    axios (request cancellation).
   - Next.js: prefetch on the server (override `queryFn` with the `serverFetch`
     function), pass with `HydrationBoundary`.
-  - Mutations invalidate exact keys; optimistic updates for instant UX.
+  - **Cache policy per endpoint**, decided by business freshness and
+    documented next to the key factory (owner, `staleTime`, `gcTime`,
+    invalidation rule, realtime source). Global default `staleTime` 60 s is
+    only the fallback. Use `select` for transformations, `enabled` for
+    dependent queries, `placeholderData: keepPreviousData` for pagination.
+  - Retry: GETs `retry: 2` with exponential backoff
+    (`retryDelay: (n) => Math.min(1000 * 2 ** n, 30_000)`), never on 4xx;
+    mutations don't retry.
+  - Mutations: **narrow** invalidation by the matrix — create → `lists()` (+ stats);
+    update → `detail(id)` + `lists()`; delete → `lists()` + `removeQueries(detail(id))`.
+    Prefer `setQueryData` when the response already contains the new entity.
+    `queryClient.invalidateQueries()` without a key is forbidden.
+  - Optimistic updates only where UX needs them: `onMutate` (cancel + snapshot +
+    set) → `onError` rollback + toast → `onSettled` invalidate.
 - **Client/UI state → Zustand**, only when shared across components. Local
   state stays in `useState`.
-  - One store per slice (`model/xxx.store.ts`), small and focused.
-  - Always select with selectors: `useCartStore(s => s.count)`, never the whole store.
+  - One store per slice/feature (`{domain}.store.ts`), small and focused.
+  - Feature stores are created with `createResettableStore` (must expose
+    `reset()`); only root stores such as the auth/session store use `create()`.
+  - Always select with selectors: `useCartStore(s => s.count)`; several fields →
+    `useShallow`. Never destructure the whole store.
   - Actions live in the store; components don't compute next state.
   - Next.js: create stores per request via a context provider (no module-level
     singleton store holding user data on the server).
+- **Logout resets everything:** `resetAllStores()` (also clears `persist`
+  storage keys), `queryClient.clear()`, in-memory tokens cleared. No user data
+  survives a logout.
 - **URL state** (filters, pagination, tabs) → search params.
 
 ---
 
-## 8. UI — Tailwind + shadcn/ui
+## 8. UI — Tailwind + shadcn/ui / Ant Design + SCSS
+
+One UI approach per project, fixed by the profile. Next.js and
+`shadcn-tailwind-tanstack-router` use Tailwind + shadcn/ui; `antd-scss-react-router` uses Ant Design v5 +
+SCSS modules (`references/ui-antd-scss.md`). The rules below apply to both;
+in the AntD profile read "design tokens" as `ConfigProvider` theme tokens,
+"variants" as AntD props/SCSS modifiers, and the Tailwind-specific bullets as
+not applicable.
+
 
 - shadcn/ui components live in `shared/ui` (configure `components.json`
   aliases accordingly). Build product components by composing them; edit the
@@ -310,7 +439,15 @@ Details and templates: `references/http-axios.md`.
   colour only, `prefers-reduced-motion` respected, touch targets ≥ 44px.
 - Motion 150–300 ms, animate `transform`/`opacity` only.
 - Every async UI has loading (skeleton), empty and error states.
-- Icons: `lucide-react`.
+- Icons: `lucide-react`, named imports only. Icon-only buttons have `aria-label`.
+- Forms: react-hook-form + `zodResolver`, schema in its own file; render with
+  the shadcn `Form` / `FormField` / `FormMessage` wrappers (AntD `Form.Item`) —
+  no hand-written error markup. Server validation errors go back into the form
+  with `form.setError`.
+- Lists/tables over 100 rows are virtualised (`@tanstack/react-virtual`);
+  data tables use `@tanstack/react-table` (AntD projects: AntD `Table`,
+  `virtual` for 100+ rows). Rarely shown heavy parts (charts,
+  editors, PDF/Excel export) are lazy-loaded with a skeleton fallback.
 
 ---
 
@@ -386,13 +523,35 @@ Details: `references/tooling.md`, `references/ci.md`.
   - `pre-push` → `typecheck` + `test` (whole repo, keep < ~1 min; E2E, build
     and audit run in CI)
 - ESLint flat config written with `defineConfig` / `globalIgnores` from
-  `eslint/config`. Must include: `typescript-eslint`, `react-hooks`, `jsx-a11y`,
-  `@next/eslint-plugin-next` (Next) / `@tanstack/eslint-plugin-router` +
-  `eslint-plugin-react-refresh` (React), `@tanstack/eslint-plugin-query`,
-  `eslint-plugin-boundaries` (FSD layer rules), `no-restricted-imports` for
-  axios (outside `shared/api`, and in any `*.server.ts`), `max-lines` (150 for
+  `eslint/config`. Must include: `typescript-eslint` (`recommended` everywhere +
+  `recommendedTypeChecked` scoped to `src/**/*.{ts,tsx}` with
+  `projectService`), `react-hooks` (current major, incl. React Compiler rules),
+  `jsx-a11y`, `@next/eslint-plugin-next` (Next) / `@tanstack/eslint-plugin-router`
+  (`shadcn-tailwind-tanstack-router`) + `eslint-plugin-react-refresh` (React SPAs),
+  `@tanstack/eslint-plugin-query`, `eslint-plugin-boundaries` (FSD layer rules;
+  `antd-scss-react-router`: `no-restricted-imports` against deep feature imports),
+  `eslint-plugin-import` (`import/order` builtin → external → internal →
+  parent/sibling → index → type, `import/no-duplicates`),
+  `eslint-plugin-unused-imports`, `no-restricted-imports` for axios (outside
+  the HTTP client files, and in any `*.server.ts`), `max-lines` (150 for
   `*.tsx`), `no-console` (warn, allow `warn`/`error`), `prettier` config last.
-  `lint` runs with `--max-warnings 0` in CI.
+  Required rules: `@typescript-eslint/no-floating-promises`,
+  `@typescript-eslint/no-misused-promises`,
+  `@typescript-eslint/consistent-type-imports` (inline type imports),
+  `@typescript-eslint/no-explicit-any` (warn), `eqeqeq`, `prefer-const`,
+  `no-var`, `no-debugger`. React/a11y/type-checked rules are scoped to `src/`,
+  not to config files. `lint` runs with `--max-warnings 0` in CI and pre-commit.
+- `tsconfig`: `strict`, `noUnusedLocals`, `noUnusedParameters`,
+  `noFallthroughCasesInSwitch`, `noUncheckedIndexedAccess`; unused-but-required
+  names are prefixed `_`.
+- Prettier (`.prettierrc.json`, plugins listed explicitly):
+  `{ "semi": true, "singleQuote": false, "trailingComma": "all",
+  "bracketSpacing": true, "bracketSameLine": false, "arrowParens": "always",
+  "printWidth": 100, "tabWidth": 2, "endOfLine": "lf",
+  "plugins": ["prettier-plugin-tailwindcss"] }`. The Tailwind plugin is used
+  only in `next` and `shadcn-tailwind-tanstack-router`; the
+  `antd-scss-react-router` config is the same without `plugins`.
+- Commit scope = slice/feature name: `feat(inspections): add status filter`.
 - `package.json` scripts: `dev`, `build`, `start`, `lint`, `lint:fix`, `format`,
   `typecheck`, `test`, `test:watch`, `test:coverage`, `test:e2e`.
 - CI (GitHub Actions, `references/ci.md`): frozen install, `lint`,
@@ -493,16 +652,17 @@ Details: `references/i18n.md`.
 
 ## 16. Definition of Done (PR checklist)
 
-- [ ] Follows FSD layers, imports only through public APIs
+- [ ] Follows the project profile (§1.1): FSD layers or feature folders, imports only through public APIs
 - [ ] No `.tsx` file > 150 lines; decomposed parts in `components/`
 - [ ] No unjustified `useEffect`; no unjustified `"use client"`
-- [ ] Data via RSC / TanStack Query; shared UI state via Zustand selectors
-- [ ] HTTP only through `shared/api/http.ts` (client) / `serverFetch` (Next server); no axios in server code
-- [ ] UI built with shadcn + Tailwind tokens, accessible, has loading/empty/error states
+- [ ] Data via RSC / TanStack Query with key factory, per-endpoint cache policy and narrow invalidation; shared UI state via Zustand selectors
+- [ ] Feature stores via `createResettableStore`; logout resets stores and `queryClient.clear()`
+- [ ] HTTP only through the single axios instance (`shared/api/http.ts` / `shared/lib/http-client.ts`) / `serverFetch` (Next server); no axios in server code
+- [ ] UI built with the project's one UI kit + Tailwind tokens, accessible, has loading/empty/error states; forms via RHF + zod wrappers; 100+ row lists virtualised
 - [ ] Security checklist in `references/security.md` passes (CSP/headers, no unsanitised HTML, Server Actions auth + zod, no secrets in public env)
 - [ ] Unit tests added/updated, all green
 - [ ] Critical flows covered by E2E; routes pass axe (no serious/critical)
 - [ ] Errors reported via Sentry/logger, no `console.log`, no PII
 - [ ] Route stays within the performance budget (§14)
 - [ ] No hard-coded user-facing strings (multi-locale products)
-- [ ] `lint`, `typecheck`, `build` pass; commit messages follow Conventional Commits
+- [ ] `lint` (type-checked, `--max-warnings 0`), `typecheck`, `build` pass; Prettier-formatted; commit messages follow Conventional Commits
